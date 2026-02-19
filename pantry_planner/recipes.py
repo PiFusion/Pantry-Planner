@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, g, request, session
 
+from flask import Blueprint, render_template, g, session
 from .db import get_db
 from .integrations.mealdb import filter_meals_by_ingredient, lookup_meal
 
@@ -22,6 +23,7 @@ def _selected_ingredient_names():
         ).fetchall()
         return [r["name"] for r in rows]
 
+    # Anonymous: map session IDs -> ingredient names
     ids = session.get("selected_ingredient_ids", [])
     if not ids:
         return []
@@ -85,6 +87,32 @@ def search():
         msg = "No recipes matched any selected ingredients."
     elif match_mode == "any":
         msg = "Showing best partial matches first (recipes matching more selected ingredients appear first)."
+        )
+
+    # Intersect MealDB results across ingredients (match ALL selected ingredients)
+    first = filter_meals_by_ingredient(selected_names[0])
+    base_map = {
+        m["idMeal"]: {
+            "idMeal": m["idMeal"],
+            "strMeal": m.get("strMeal"),
+            "strMealThumb": m.get("strMealThumb"),
+        }
+        for m in first
+    }
+    ids = set(base_map.keys())
+
+    for ing in selected_names[1:]:
+        meals = filter_meals_by_ingredient(ing)
+        ids &= {m["idMeal"] for m in meals}
+        if not ids:
+            break
+
+    results = [base_map[mid] for mid in ids if mid in base_map]
+    results = sorted(results, key=lambda x: (x.get("strMeal") or ""))[:50]
+
+    msg = None
+    if not results:
+        msg = "No recipes matched all selected ingredients."
 
     return render_template(
         "recipes/results.html",
