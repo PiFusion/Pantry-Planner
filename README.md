@@ -18,7 +18,7 @@ Pantry Planner lets users select ingredients they have and discover recipes powe
 - TheMealDB API
 
 
-Using Pantry Planner
+## Using Pantry Planner
 Ingredients
 
 Go to /ingredients
