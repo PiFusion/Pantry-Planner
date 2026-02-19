@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Printable Grocery List</title>
+</head>
+<body>
+  <h1>Grocery List</h1>
+  {% if not items %}
+    <p>No items.</p>
+  {% else %}
+    <ul>
+      {% for item in items %}
+        <li>
+          [ {% if item.is_checked %}x{% else %} {% endif %} ]
+          {{ item.item_name }}
+          {% if item.quantity %} ({{ item.quantity }}){% endif %}
+          {% if item.notes %} - {{ item.notes }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <script>
+    window.print();
+  </script>
+</body>
+</html>
