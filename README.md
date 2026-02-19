@@ -17,6 +17,41 @@ Pantry Planner lets users select ingredients they have and discover recipes powe
 - SQLite
 - TheMealDB API
 
+
+Using Pantry Planner
+Ingredients
+
+Go to /ingredients
+
+Select ingredients (Add/Remove)
+
+Logged-in users: selections persist in the database
+
+Anonymous users: selections persist only in the browser session
+
+Find Recipes
+
+Go to /recipes/search
+
+Partial matching: mode=partial with a minimum match count:
+
+Example: /recipes/search?mode=partial&min=2
+
+Strict matching: mode=all (requires ALL selected ingredients):
+
+Example: /recipes/search?mode=all
+
+Bookmarks
+
+Go to /bookmarks
+
+You must be logged in to bookmark recipes.
+
+Grocery List
+
+Go to /grocery/ (logged-in users only)
+
+Print view: /grocery/print
 ---
 
 ## Quickstart
@@ -49,3 +84,18 @@ flask --app pantry_planner run
 Open:
 
 http://127.0.0.1:5000/ingredients
+
+
+
+
+
+
+
+---
+
+## How to end the venv (and cool the laptop down)
+
+1) **Stop Flask** (in the terminal running it): press **Ctrl + C**.  
+2) **Deactivate venv**:
+```bash
+deactivate
