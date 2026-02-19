@@ -1,6 +1,4 @@
-from flask import Blueprint, render_template, g, request, session
-
-from flask import Blueprint, render_template, g, session
+from flask import Blueprint, render_template, g, session, request
 from .db import get_db
 from .integrations.mealdb import filter_meals_by_ingredient, lookup_meal
 
@@ -39,87 +37,78 @@ def _selected_ingredient_names():
 @bp.get("/search")
 def search():
     selected_names = _selected_ingredient_names()
-    match_mode = request.args.get("match", "any").strip().lower()
-    if match_mode not in {"all", "any"}:
-        match_mode = "any"
+    total = len(selected_names)
 
-    if not selected_names:
+    if total == 0:
         return render_template(
             "recipes/results.html",
             selected_names=[],
             results=[],
             message="No ingredients selected yet. Go select ingredients first.",
-            match_mode=match_mode,
+            mode="partial",
+            min_match=1,
+            total_selected=0,
         )
 
-    result_map = {}
-    for ingredient in selected_names:
-        meals = filter_meals_by_ingredient(ingredient)
-        for meal in meals:
-            meal_id = meal.get("idMeal")
-            if not meal_id:
+    mode = request.args.get("mode", "partial").strip().lower()
+    try:
+        min_match = int(request.args.get("min", "2"))
+    except ValueError:
+        min_match = 2
+
+    # Clamp min_match
+    if min_match < 1:
+        min_match = 1
+    if min_match > total:
+        min_match = total
+
+    if mode == "all":
+        min_match = total
+
+    meal_counts = {}  # meal_id -> count of matched ingredients
+    meal_info = {}    # meal_id -> basic info
+
+    for ing in selected_names:
+        meals = filter_meals_by_ingredient(ing) or []
+        for m in meals:
+            mid = m.get("idMeal")
+            if not mid:
                 continue
-            if meal_id not in result_map:
-                result_map[meal_id] = {
-                    "idMeal": meal_id,
-                    "strMeal": meal.get("strMeal"),
-                    "strMealThumb": meal.get("strMealThumb"),
-                    "matched_count": 0,
+            meal_counts[mid] = meal_counts.get(mid, 0) + 1
+            if mid not in meal_info:
+                meal_info[mid] = {
+                    "idMeal": mid,
+                    "strMeal": m.get("strMeal"),
+                    "strMealThumb": m.get("strMealThumb"),
                 }
-            result_map[meal_id]["matched_count"] += 1
 
-    if match_mode == "all":
-        results = [
-            meal for meal in result_map.values() if meal["matched_count"] == len(selected_names)
-        ]
-    else:
-        results = [meal for meal in result_map.values() if meal["matched_count"] > 0]
+    results = []
+    for mid, count in meal_counts.items():
+        if count >= min_match:
+            info = meal_info.get(mid, {"idMeal": mid, "strMeal": "", "strMealThumb": ""})
+            info = dict(info)
+            info["match_count"] = count
+            info["match_percent"] = round((count / total) * 100)
+            results.append(info)
 
-    results = sorted(
-        results,
-        key=lambda x: (-(x.get("matched_count") or 0), x.get("strMeal") or ""),
-    )[:50]
-
-    msg = None
-    if not results and match_mode == "all":
-        msg = "No recipes matched all selected ingredients. Try Partial Match mode."
-    elif not results:
-        msg = "No recipes matched any selected ingredients."
-    elif match_mode == "any":
-        msg = "Showing best partial matches first (recipes matching more selected ingredients appear first)."
-        )
-
-    # Intersect MealDB results across ingredients (match ALL selected ingredients)
-    first = filter_meals_by_ingredient(selected_names[0])
-    base_map = {
-        m["idMeal"]: {
-            "idMeal": m["idMeal"],
-            "strMeal": m.get("strMeal"),
-            "strMealThumb": m.get("strMealThumb"),
-        }
-        for m in first
-    }
-    ids = set(base_map.keys())
-
-    for ing in selected_names[1:]:
-        meals = filter_meals_by_ingredient(ing)
-        ids &= {m["idMeal"] for m in meals}
-        if not ids:
-            break
-
-    results = [base_map[mid] for mid in ids if mid in base_map]
-    results = sorted(results, key=lambda x: (x.get("strMeal") or ""))[:50]
+    results.sort(key=lambda x: (-x["match_count"], (x.get("strMeal") or "")))
+    results = results[:75]
 
     msg = None
     if not results:
-        msg = "No recipes matched all selected ingredients."
+        if mode == "all":
+            msg = "No recipes matched ALL selected ingredients. Try partial match (e.g., at least 2)."
+        else:
+            msg = "No recipes matched your minimum. Try lowering the minimum match."
 
     return render_template(
         "recipes/results.html",
         selected_names=selected_names,
         results=results,
         message=msg,
-        match_mode=match_mode,
+        mode=mode,
+        min_match=min_match,
+        total_selected=total,
     )
 
 
