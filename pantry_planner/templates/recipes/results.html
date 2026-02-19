@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Recipe Results</h2>
+
+<p><b>Selected ingredients:</b>
+  {% if selected_names %}
+    {{ selected_names|join(", ") }}
+  {% else %}
+    none
+  {% endif %}
+</p>
+
+{% if message %}<p>{{ message }}</p>{% endif %}
+
+<ul>
+  {% for r in results %}
+    <li>
+      <a href="/recipes/{{ r.idMeal }}">{{ r.strMeal }}</a>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

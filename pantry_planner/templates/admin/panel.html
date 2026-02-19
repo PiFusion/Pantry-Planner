@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Panel</h2>
+
+<p><b>Ingredients in DB:</b> {{ ingredient_count }}</p>
+<p><b>Last synced:</b> {{ last_sync or "Never" }}</p>
+
+<form method="post" action="/admin/sync-ingredients">
+  <button type="submit">Sync Ingredients from MealDB</button>
+</form>
+{% endblock %}
