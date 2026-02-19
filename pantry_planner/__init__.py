@@ -52,12 +52,14 @@ def create_app():
     from .recipes import bp as recipes_bp
     from .bookmarks import bp as bookmarks_bp
     from .admin import bp as admin_bp
+    from .grocery import bp as grocery_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(pantry_bp)
     app.register_blueprint(recipes_bp)
     app.register_blueprint(bookmarks_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(grocery_bp)
 
     @app.get("/")
     def home():

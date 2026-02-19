@@ -9,6 +9,9 @@
     <a href="/ingredients">Ingredients</a> |
     <a href="/recipes/search">Find Recipes</a> |
     <a href="/bookmarks/">Bookmarks</a> |
+    {% if g.user %}
+      <a href="/grocery/">Grocery List</a> |
+    {% endif %}
 
     {% if g.user and g.user['role'] == 'admin' %}
       <a href="/admin/">Admin</a> |

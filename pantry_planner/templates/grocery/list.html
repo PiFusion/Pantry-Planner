@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Grocery List</h2>
+
+<form method="post" action="/grocery/add">
+  <label>Item <input name="item_name" required></label>
+  <label>Qty <input name="quantity" placeholder="e.g. 2 lbs"></label>
+  <label>Notes <input name="notes" placeholder="optional"></label>
+  <button type="submit">Add Item</button>
+</form>
+
+<p>
+  <a href="/grocery/print" target="_blank">Print-friendly view</a>
+</p>
+
+{% if not items %}
+  <p>No grocery items yet.</p>
+{% else %}
+  <ul>
+    {% for item in items %}
+      <li>
+        <form method="post" action="/grocery/toggle/{{ item.id }}" style="display:inline;">
+          <button type="submit">{% if item.is_checked %}Uncheck{% else %}Check{% endif %}</button>
+        </form>
+        {% if item.is_checked %}<s>{% endif %}
+          {{ item.item_name }}
+          {% if item.quantity %} ({{ item.quantity }}){% endif %}
+          {% if item.notes %} - {{ item.notes }}{% endif %}
+        {% if item.is_checked %}</s>{% endif %}
+
+        <form method="post" action="/grocery/delete/{{ item.id }}" style="display:inline;">
+          <button type="submit">Delete</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="/grocery/clear">
+    <button type="submit">Delete All</button>
+  </form>
+{% endif %}
+{% endblock %}

@@ -50,9 +50,22 @@ CREATE TABLE IF NOT EXISTS meal_cache (
   cached_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Grocery list items per user
+CREATE TABLE IF NOT EXISTS grocery_items (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  item_name   TEXT NOT NULL,
+  quantity    TEXT,
+  notes       TEXT,
+  is_checked  INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 COMMIT;
 
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_pantry_user ON pantry_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_ingredients_hidden ON ingredients(hidden);
+CREATE INDEX IF NOT EXISTS idx_grocery_user ON grocery_items(user_id);
