@@ -41,6 +41,12 @@ def search():
     if match_mode not in {"all", "any"}:
         match_mode = "any"
 
+    sort_mode = request.args.get("sort", "match").strip().lower()
+    if sort_mode not in {"match", "name"}:
+        sort_mode = "match"
+
+    min_match = request.args.get("min", type=int)
+
     if not selected_names:
         return render_template(
             "recipes/results.html",
@@ -48,6 +54,9 @@ def search():
             results=[],
             message="No ingredients selected yet. Go select ingredients first.",
             match_mode=match_mode,
+            sort_mode=sort_mode,
+            min_match=1,
+            effective_min=0,
         )
 
     result_map = {}
@@ -63,28 +72,38 @@ def search():
                     "strMeal": meal.get("strMeal"),
                     "strMealThumb": meal.get("strMealThumb"),
                     "matched_count": 0,
+                    "matched_ingredients": [],
                 }
-            result_map[meal_id]["matched_count"] += 1
+
+            if ingredient not in result_map[meal_id]["matched_ingredients"]:
+                result_map[meal_id]["matched_ingredients"].append(ingredient)
+                result_map[meal_id]["matched_count"] += 1
 
     if match_mode == "all":
-        results = [
-            meal for meal in result_map.values() if meal["matched_count"] == len(selected_names)
-        ]
+        effective_min = len(selected_names)
     else:
-        results = [meal for meal in result_map.values() if meal["matched_count"] > 0]
+        requested_min = min_match if min_match is not None else 1
+        effective_min = max(1, min(requested_min, len(selected_names)))
 
-    results = sorted(
-        results,
-        key=lambda x: (-(x.get("matched_count") or 0), x.get("strMeal") or ""),
-    )[:50]
+    results = [meal for meal in result_map.values() if meal["matched_count"] >= effective_min]
+
+    if sort_mode == "name":
+        results = sorted(results, key=lambda x: (x.get("strMeal") or "", -(x.get("matched_count") or 0)))
+    else:
+        results = sorted(
+            results,
+            key=lambda x: (-(x.get("matched_count") or 0), x.get("strMeal") or ""),
+        )
+
+    results = results[:50]
 
     msg = None
     if not results and match_mode == "all":
         msg = "No recipes matched all selected ingredients. Try Partial Match mode."
     elif not results:
-        msg = "No recipes matched any selected ingredients."
+        msg = "No recipes matched the selected minimum threshold."
     elif match_mode == "any":
-        msg = "Showing best partial matches first (recipes matching more selected ingredients appear first)."
+        msg = f"Showing recipes matching at least {effective_min} selected ingredient(s)."
 
     return render_template(
         "recipes/results.html",
@@ -92,6 +111,9 @@ def search():
         results=results,
         message=msg,
         match_mode=match_mode,
+        sort_mode=sort_mode,
+        min_match=min_match if min_match is not None else 1,
+        effective_min=effective_min,
     )
 
 

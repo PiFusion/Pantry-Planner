@@ -5,8 +5,9 @@ Pantry Planner helps users select ingredients they already have and discover rec
 ## Features
 - Ingredient browser with search (`/ingredients`)
 - Recipe discovery (`/recipes/search`) with:
-  - **Partial mode**: `?match=any` (default)
+  - **Partial mode**: `?match=any` (default), with `min` threshold
   - **Strict mode**: `?match=all` (must match all selected ingredients)
+  - Sort options: `?sort=match` or `?sort=name`
 - User accounts (`/auth/register`, `/auth/login`, `/auth/logout`)
 - Bookmarks (`/bookmarks/`) for logged-in users
 - Grocery list (`/grocery/`) with check/uncheck/delete/clear and print view (`/grocery/print`)
@@ -63,6 +64,8 @@ flask --app pantry_planner make-admin
 
 Then enter the username you registered with (for example, `toby@demo.com`).
 
+Admin destructive actions now include confirmation prompts in the UI. Deleting another admin requires typing that admin username in the prompt.
+
 ## Usage Notes
 - Anonymous users can select ingredients, but those selections are stored in session only.
 - Logged-in users get persistent pantry selections, bookmarks, and grocery list.
@@ -86,4 +89,12 @@ git push
 2. Deactivate venv:
 ```bash
 deactivate
+```
+
+
+## Tests
+Run the lightweight test suite:
+
+```bash
+python -m unittest discover -s tests -v
 ```

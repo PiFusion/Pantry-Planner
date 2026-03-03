@@ -1,41 +1,72 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Recipe Results</h2>
+<div class="section">
+  <h2>Recipe Results</h2>
 
-<p><b>Selected ingredients:</b>
-  {% if selected_names %}
-    {{ selected_names|join(", ") }}
-  {% else %}
-    none
+  <p><b>Selected ingredients:</b>
+    {% if selected_names %}
+      {{ selected_names|join(", ") }}
+    {% else %}
+      none
+    {% endif %}
+  </p>
+
+  <form method="get" action="/recipes/search" class="row">
+    <label>
+      Match mode:
+      <select name="match" onchange="toggleMinField()">
+        <option value="any" {% if match_mode == 'any' %}selected{% endif %}>Partial (any selected ingredient)</option>
+        <option value="all" {% if match_mode == 'all' %}selected{% endif %}>Strict (all selected ingredients)</option>
+      </select>
+    </label>
+
+    <label id="min-field" {% if match_mode == 'all' %}style="display:none;"{% endif %}>
+      Minimum matched ingredients:
+      <input type="number" name="min" min="1" value="{{ min_match }}" style="width:80px;">
+    </label>
+
+    <label>
+      Sort:
+      <select name="sort">
+        <option value="match" {% if sort_mode == 'match' %}selected{% endif %}>Best match</option>
+        <option value="name" {% if sort_mode == 'name' %}selected{% endif %}>Name</option>
+      </select>
+    </label>
+
+    <button type="submit">Update</button>
+  </form>
+
+  {% if match_mode == 'any' %}
+    <p class="muted">Current minimum threshold: {{ effective_min }} ingredient(s).</p>
   {% endif %}
-</p>
 
-<form method="get" action="/recipes/search">
-  <label>
-    Match mode:
-    <select name="match">
-      <option value="any" {% if match_mode == 'any' %}selected{% endif %}>Partial (any selected ingredient)</option>
-      <option value="all" {% if match_mode == 'all' %}selected{% endif %}>Strict (all selected ingredients)</option>
-    </select>
-  </label>
-  <button type="submit">Update</button>
-</form>
+  {% if message %}<p>{{ message }}</p>{% endif %}
 
-{% if message %}<p>{{ message }}</p>{% endif %}
+  <ul>
+    {% for r in results %}
+      <li>
+        <a href="/recipes/{{ r.idMeal }}">{{ r.strMeal }}</a>
+        {% if r.matched_count is defined %}
+          - matched {{ r.matched_count }} ingredient{{ '' if r.matched_count == 1 else 's' }}
+        {% endif %}
+        {% if r.matched_ingredients %}
+          <span class="muted">(e.g. {{ r.matched_ingredients[:3]|join(', ') }})</span>
+        {% endif %}
+        {% if g.user %}
+          <form method="post" action="/bookmarks/add/{{ r.idMeal }}" style="display:inline;">
+            <button type="submit">Bookmark</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
 
-<ul>
-  {% for r in results %}
-    <li>
-      <a href="/recipes/{{ r.idMeal }}">{{ r.strMeal }}</a>
-      {% if r.matched_count is defined %}
-        - matched {{ r.matched_count }} ingredient{{ '' if r.matched_count == 1 else 's' }}
-      {% endif %}
-      {% if g.user %}
-        <form method="post" action="/bookmarks/add/{{ r.idMeal }}" style="display:inline;">
-          <button type="submit">Bookmark</button>
-        </form>
-      {% endif %}
-    </li>
-  {% endfor %}
-</ul>
+<script>
+function toggleMinField() {
+  const match = document.querySelector('select[name="match"]').value;
+  const minField = document.getElementById('min-field');
+  minField.style.display = match === 'all' ? 'none' : 'inline-flex';
+}
+</script>
 {% endblock %}

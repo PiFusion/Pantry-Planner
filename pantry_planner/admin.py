@@ -26,11 +26,9 @@ def admin_required(view):
 def panel():
     db = get_db()
 
-    # top-level metrics
     last_sync = db.execute("SELECT MAX(updated_at) AS last_sync FROM ingredients").fetchone()
     count = db.execute("SELECT COUNT(*) AS c FROM ingredients").fetchone()
 
-    # user search
     user_q = request.args.get("user_q", "").strip()
     users = db.execute(
         """
@@ -43,7 +41,6 @@ def panel():
         (f"%{user_q}%",),
     ).fetchall()
 
-    # user-specific pantry management
     manage_user_id = request.args.get("manage_user_id", type=int)
     manage_user = None
     selected_ingredients = []
@@ -84,7 +81,6 @@ def panel():
                 (manage_user_id, f"%{ingredient_q}%"),
             ).fetchall()
 
-    # ingredient moderation / blacklist
     ingredient_admin_q = request.args.get("ingredient_admin_q", "").strip()
     ingredient_rows = db.execute(
         """
@@ -141,11 +137,24 @@ def sync_ingredients():
 @bp.post("/users/delete/<int:user_id>")
 @admin_required
 def delete_user(user_id):
+    if request.form.get("confirm_delete") != "yes":
+        flash("Delete cancelled.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
+    db = get_db()
+    target = db.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,)).fetchone()
+    if target is None:
+        flash("User not found.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
     if g.user["id"] == user_id:
         flash("You cannot delete your own admin account while logged in.")
         return redirect(request.referrer or url_for("admin.panel"))
 
-    db = get_db()
+    if target["role"] == "admin" and request.form.get("admin_confirm_username") != target["username"]:
+        flash("To delete an admin, type the exact username in the confirmation prompt.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
     db.execute("DELETE FROM users WHERE id = ?", (user_id,))
     db.commit()
     flash("User deleted.")
@@ -161,6 +170,12 @@ def add_user_ingredient(user_id):
         return redirect(request.referrer or url_for("admin.panel", manage_user_id=user_id))
 
     db = get_db()
+    user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    ingredient = db.execute("SELECT id FROM ingredients WHERE id = ?", (ingredient_id,)).fetchone()
+    if user is None or ingredient is None:
+        flash("User or ingredient no longer exists.")
+        return redirect(request.referrer or url_for("admin.panel", manage_user_id=user_id))
+
     db.execute(
         "INSERT OR IGNORE INTO pantry_items (user_id, ingredient_id) VALUES (?, ?)",
         (user_id, ingredient_id),
@@ -186,7 +201,16 @@ def remove_user_ingredient(user_id, ingredient_id):
 @bp.post("/ingredients/toggle-hidden/<int:ingredient_id>")
 @admin_required
 def toggle_hidden_ingredient(ingredient_id):
+    if request.form.get("confirm_blacklist") != "yes":
+        flash("Blacklist update cancelled.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
     db = get_db()
+    row = db.execute("SELECT id FROM ingredients WHERE id = ?", (ingredient_id,)).fetchone()
+    if row is None:
+        flash("Ingredient not found.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
     db.execute(
         """
         UPDATE ingredients
