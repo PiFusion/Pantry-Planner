@@ -53,6 +53,16 @@ flask --app pantry_planner run --debug
 Open:
 - `http://127.0.0.1:5000/ingredients`
 
+## Admin setup
+By default, newly registered users are created with role `user`.
+To access `/admin/`, promote your account once from CLI:
+
+```bash
+flask --app pantry_planner make-admin
+```
+
+Then enter the username you registered with (for example, `toby@demo.com`).
+
 ## Usage Notes
 - Anonymous users can select ingredients, but those selections are stored in session only.
 - Logged-in users get persistent pantry selections, bookmarks, and grocery list.

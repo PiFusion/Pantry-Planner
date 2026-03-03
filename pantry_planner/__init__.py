@@ -46,6 +46,31 @@ def create_app():
         db.commit()
         print(f"✅ Synced {len(items)} ingredients into SQLite.")
 
+
+    @app.cli.command("make-admin")
+    def make_admin_command():
+        """Promote a user to admin by username."""
+        import click
+
+        username = click.prompt("Username to promote").strip()
+        if not username:
+            print("❌ Username is required.")
+            return
+
+        db = get_db()
+        row = db.execute("SELECT id, role FROM users WHERE username = ?", (username,)).fetchone()
+        if row is None:
+            print(f"❌ User '{username}' not found.")
+            return
+
+        if row["role"] == "admin":
+            print(f"ℹ️ User '{username}' is already an admin.")
+            return
+
+        db.execute("UPDATE users SET role = 'admin' WHERE id = ?", (row["id"],))
+        db.commit()
+        print(f"✅ Promoted '{username}' to admin.")
+
     # Blueprints
     from .auth import bp as auth_bp
     from .pantry import bp as pantry_bp
