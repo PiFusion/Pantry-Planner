@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not meal %}
+  <p>Recipe not found.</p>
+{% else %}
+  <h2>{{ meal.strMeal }}</h2>
+
+  <form method="post" action="/bookmarks/add/{{ meal.idMeal }}">
+    <button type="submit">Bookmark</button>
+  </form>
+
+  <h3>Ingredients</h3>
+  <ul>
+    {% for p in ingredients %}
+      <li>{{ p.measure }} {{ p.ingredient }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Instructions</h3>
+  <pre style="white-space:pre-wrap;">{{ meal.strInstructions }}</pre>
+{% endif %}
+{% endblock %}
