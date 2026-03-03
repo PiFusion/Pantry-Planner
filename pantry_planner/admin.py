@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import Blueprint, render_template, redirect, url_for, flash, g
+from flask import Blueprint, render_template, redirect, request, url_for, flash, g
 
 from .db import get_db
 from .integrations.mealdb import fetch_ingredients
@@ -25,12 +25,90 @@ def admin_required(view):
 @admin_required
 def panel():
     db = get_db()
+
+    # top-level metrics
     last_sync = db.execute("SELECT MAX(updated_at) AS last_sync FROM ingredients").fetchone()
     count = db.execute("SELECT COUNT(*) AS c FROM ingredients").fetchone()
+
+    # user search
+    user_q = request.args.get("user_q", "").strip()
+    users = db.execute(
+        """
+        SELECT id, username, role, created_at
+        FROM users
+        WHERE username LIKE ?
+        ORDER BY username
+        LIMIT 100
+        """,
+        (f"%{user_q}%",),
+    ).fetchall()
+
+    # user-specific pantry management
+    manage_user_id = request.args.get("manage_user_id", type=int)
+    manage_user = None
+    selected_ingredients = []
+    ingredient_q = request.args.get("ingredient_q", "").strip()
+    candidate_ingredients = []
+
+    if manage_user_id:
+        manage_user = db.execute(
+            "SELECT id, username, role FROM users WHERE id = ?",
+            (manage_user_id,),
+        ).fetchone()
+
+        if manage_user:
+            selected_ingredients = db.execute(
+                """
+                SELECT i.id, i.name
+                FROM pantry_items p
+                JOIN ingredients i ON i.id = p.ingredient_id
+                WHERE p.user_id = ?
+                ORDER BY i.name
+                """,
+                (manage_user_id,),
+            ).fetchall()
+
+            candidate_ingredients = db.execute(
+                """
+                SELECT i.id, i.name
+                FROM ingredients i
+                LEFT JOIN pantry_items p
+                  ON p.ingredient_id = i.id
+                 AND p.user_id = ?
+                WHERE p.id IS NULL
+                  AND i.hidden = 0
+                  AND i.name LIKE ?
+                ORDER BY i.name
+                LIMIT 50
+                """,
+                (manage_user_id, f"%{ingredient_q}%"),
+            ).fetchall()
+
+    # ingredient moderation / blacklist
+    ingredient_admin_q = request.args.get("ingredient_admin_q", "").strip()
+    ingredient_rows = db.execute(
+        """
+        SELECT id, name, hidden, updated_at
+        FROM ingredients
+        WHERE name LIKE ?
+        ORDER BY name
+        LIMIT 100
+        """,
+        (f"%{ingredient_admin_q}%",),
+    ).fetchall()
+
     return render_template(
         "admin/panel.html",
         last_sync=(last_sync["last_sync"] if last_sync else None),
         ingredient_count=(count["c"] if count else 0),
+        users=users,
+        user_q=user_q,
+        manage_user=manage_user,
+        selected_ingredients=selected_ingredients,
+        ingredient_q=ingredient_q,
+        candidate_ingredients=candidate_ingredients,
+        ingredient_admin_q=ingredient_admin_q,
+        ingredient_rows=ingredient_rows,
     )
 
 
@@ -58,3 +136,66 @@ def sync_ingredients():
     db.commit()
     flash(f"Synced {len(items)} ingredients from MealDB.")
     return redirect(url_for("admin.panel"))
+
+
+@bp.post("/users/delete/<int:user_id>")
+@admin_required
+def delete_user(user_id):
+    if g.user["id"] == user_id:
+        flash("You cannot delete your own admin account while logged in.")
+        return redirect(request.referrer or url_for("admin.panel"))
+
+    db = get_db()
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    db.commit()
+    flash("User deleted.")
+    return redirect(request.referrer or url_for("admin.panel"))
+
+
+@bp.post("/users/<int:user_id>/ingredients/add")
+@admin_required
+def add_user_ingredient(user_id):
+    ingredient_id = request.form.get("ingredient_id", type=int)
+    if not ingredient_id:
+        flash("Select an ingredient to add.")
+        return redirect(request.referrer or url_for("admin.panel", manage_user_id=user_id))
+
+    db = get_db()
+    db.execute(
+        "INSERT OR IGNORE INTO pantry_items (user_id, ingredient_id) VALUES (?, ?)",
+        (user_id, ingredient_id),
+    )
+    db.commit()
+    flash("Ingredient added to user pantry.")
+    return redirect(request.referrer or url_for("admin.panel", manage_user_id=user_id))
+
+
+@bp.post("/users/<int:user_id>/ingredients/remove/<int:ingredient_id>")
+@admin_required
+def remove_user_ingredient(user_id, ingredient_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM pantry_items WHERE user_id = ? AND ingredient_id = ?",
+        (user_id, ingredient_id),
+    )
+    db.commit()
+    flash("Ingredient removed from user pantry.")
+    return redirect(request.referrer or url_for("admin.panel", manage_user_id=user_id))
+
+
+@bp.post("/ingredients/toggle-hidden/<int:ingredient_id>")
+@admin_required
+def toggle_hidden_ingredient(ingredient_id):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE ingredients
+        SET hidden = CASE hidden WHEN 1 THEN 0 ELSE 1 END,
+            updated_at = datetime('now')
+        WHERE id = ?
+        """,
+        (ingredient_id,),
+    )
+    db.commit()
+    flash("Ingredient visibility updated.")
+    return redirect(request.referrer or url_for("admin.panel"))

@@ -8,4 +8,89 @@
 <form method="post" action="/admin/sync-ingredients">
   <button type="submit">Sync Ingredients from MealDB</button>
 </form>
+
+<hr/>
+<h3>User Management</h3>
+<form method="get" action="/admin/">
+  <input name="user_q" value="{{ user_q }}" placeholder="Search users...">
+  <button type="submit">Search</button>
+</form>
+
+{% if users %}
+  <ul>
+    {% for u in users %}
+      <li>
+        <b>{{ u.username }}</b> ({{ u.role }})
+        <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
+        <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;">
+          <button type="submit">Delete user</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No users found.</p>
+{% endif %}
+
+{% if manage_user %}
+  <hr/>
+  <h3>Manage Pantry for {{ manage_user.username }}</h3>
+
+  <h4>Current pantry ingredients</h4>
+  {% if selected_ingredients %}
+    <ul>
+      {% for ing in selected_ingredients %}
+        <li>
+          {{ ing.name }}
+          <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/remove/{{ ing.id }}" style="display:inline;">
+            <button type="submit">Remove</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No ingredients selected.</p>
+  {% endif %}
+
+  <h4>Add ingredient</h4>
+  <form method="get" action="/admin/">
+    <input type="hidden" name="manage_user_id" value="{{ manage_user.id }}">
+    <input type="hidden" name="user_q" value="{{ user_q }}">
+    <input name="ingredient_q" value="{{ ingredient_q }}" placeholder="Search ingredients to add...">
+    <button type="submit">Search</button>
+  </form>
+
+  <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/add">
+    <select name="ingredient_id">
+      <option value="">Select ingredient</option>
+      {% for ing in candidate_ingredients %}
+        <option value="{{ ing.id }}">{{ ing.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Add to pantry</button>
+  </form>
+{% endif %}
+
+<hr/>
+<h3>Ingredient Moderation (Blacklist)</h3>
+<form method="get" action="/admin/">
+  <input name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients...">
+  <button type="submit">Search</button>
+</form>
+
+{% if ingredient_rows %}
+  <ul>
+    {% for ing in ingredient_rows %}
+      <li>
+        {{ ing.name }}
+        {% if ing.hidden %}<b>(blacklisted)</b>{% endif %}
+        <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;">
+          <button type="submit">{% if ing.hidden %}Unblacklist{% else %}Blacklist{% endif %}</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No ingredients found.</p>
+{% endif %}
 {% endblock %}

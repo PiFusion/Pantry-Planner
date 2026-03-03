@@ -10,7 +10,7 @@ Pantry Planner helps users select ingredients they already have and discover rec
 - User accounts (`/auth/register`, `/auth/login`, `/auth/logout`)
 - Bookmarks (`/bookmarks/`) for logged-in users
 - Grocery list (`/grocery/`) with check/uncheck/delete/clear and print view (`/grocery/print`)
-- Admin panel (`/admin/`) for ingredient sync (admin role required)
+- Admin panel (`/admin/`) for ingredient sync, user management, pantry edits, and ingredient blacklist controls (admin role required)
 
 ## Tech Stack
 - Python + Flask
@@ -67,6 +67,7 @@ Then enter the username you registered with (for example, `toby@demo.com`).
 - Anonymous users can select ingredients, but those selections are stored in session only.
 - Logged-in users get persistent pantry selections, bookmarks, and grocery list.
 - The Grocery List nav link appears only when logged in.
+- Admin tools include: delete users, edit a user pantry, and blacklist/unblacklist ingredients.
 
 ## Troubleshooting (merge conflicts)
 If GitHub says your PR has conflicts, from your PR branch run:
