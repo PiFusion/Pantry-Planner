@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from werkzeug.security import generate_password_hash
 
@@ -100,6 +101,40 @@ class PantryPlannerTestCase(unittest.TestCase):
         text = r.get_data(as_text=True)
         self.assertIn("Visible", text)
         self.assertNotIn("HiddenOne", text)
+
+    def test_recipe_search_supports_legacy_mode_alias(self):
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (id, name, hidden) VALUES (1, 'Chicken', 0)")
+            db.commit()
+
+        with self.client.session_transaction() as sess:
+            sess["selected_ingredient_ids"] = [1]
+
+        with patch("pantry_planner.recipes.filter_meals_by_ingredient", return_value=[]):
+            r = self.client.get("/recipes/search?mode=strict", follow_redirects=False)
+
+        text = r.get_data(as_text=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("<option value=\"all\" selected>", text)
+
+    def test_admin_panel_can_show_all_blacklist_matches(self):
+        self._create_user("admin@example.com", role="admin")
+        self._login("admin@example.com")
+
+        with self.app.app_context():
+            db = get_db()
+            for i in range(110):
+                db.execute("INSERT INTO ingredients (name, hidden) VALUES (?, 0)", (f"Ingredient{i:03d}",))
+            db.commit()
+
+        limited = self.client.get("/admin/", follow_redirects=False)
+        limited_text = limited.get_data(as_text=True)
+        self.assertIn("Showing 100 of 110 matching ingredient(s)", limited_text)
+
+        expanded = self.client.get("/admin/?show_all_ingredients=1", follow_redirects=False)
+        expanded_text = expanded.get_data(as_text=True)
+        self.assertIn("Showing 110 of 110 matching ingredient(s)", expanded_text)
 
     def test_grocery_add_and_remove(self):
         uid = self._create_user()

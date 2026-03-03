@@ -82,8 +82,19 @@
   <p class="muted">Blacklisted ingredients are hidden from user ingredient selection lists.</p>
   <form method="get" action="/admin/" class="row">
     <input name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients...">
+    <label style="display:inline-flex; align-items:center; gap:.35rem;">
+      <input type="checkbox" name="show_all_ingredients" value="1" {% if show_all_ingredients %}checked{% endif %}>
+      Show all matches
+    </label>
     <button type="submit">Search</button>
   </form>
+
+  <p class="muted">
+    Showing {{ ingredient_rows|length }} of {{ total_ingredient_matches }} matching ingredient(s).
+    {% if not show_all_ingredients and total_ingredient_matches > 100 %}
+      Refine search or enable <b>Show all matches</b>.
+    {% endif %}
+  </p>
 
   {% if ingredient_rows %}
     <ul>

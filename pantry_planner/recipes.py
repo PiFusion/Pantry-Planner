@@ -37,7 +37,15 @@ def _selected_ingredient_names():
 @bp.get("/search")
 def search():
     selected_names = _selected_ingredient_names()
-    match_mode = request.args.get("match", "any").strip().lower()
+    raw_match_mode = request.args.get("match")
+    match_mode = (raw_match_mode or "").strip().lower()
+    if match_mode not in {"all", "any"}:
+        # Backward-compatible alias from older links/docs.
+        legacy_mode = request.args.get("mode", "").strip().lower()
+        if legacy_mode in {"all", "strict"}:
+            match_mode = "all"
+        elif legacy_mode in {"any", "partial"}:
+            match_mode = "any"
     if match_mode not in {"all", "any"}:
         match_mode = "any"
 
@@ -104,6 +112,13 @@ def search():
         msg = "No recipes matched the selected minimum threshold."
     elif match_mode == "any":
         msg = f"Showing recipes matching at least {effective_min} selected ingredient(s)."
+
+    if match_mode == "all" and len(selected_names) == 1:
+        strict_note = (
+            "Strict and Partial behave the same when only 1 ingredient is selected. "
+            "Select 2+ ingredients to see a difference."
+        )
+        msg = f"{msg} {strict_note}".strip() if msg else strict_note
 
     return render_template(
         "recipes/results.html",

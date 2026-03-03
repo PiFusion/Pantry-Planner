@@ -82,16 +82,21 @@ def panel():
             ).fetchall()
 
     ingredient_admin_q = request.args.get("ingredient_admin_q", "").strip()
-    ingredient_rows = db.execute(
-        """
+    show_all_ingredients = request.args.get("show_all_ingredients") == "1"
+    ingredient_params = [f"%{ingredient_admin_q}%"]
+    ingredient_query = """
         SELECT id, name, hidden, updated_at
         FROM ingredients
         WHERE name LIKE ?
         ORDER BY name
-        LIMIT 100
-        """,
+    """
+    if not show_all_ingredients:
+        ingredient_query += " LIMIT 100"
+    ingredient_rows = db.execute(ingredient_query, ingredient_params).fetchall()
+    total_ingredient_matches = db.execute(
+        "SELECT COUNT(*) AS c FROM ingredients WHERE name LIKE ?",
         (f"%{ingredient_admin_q}%",),
-    ).fetchall()
+    ).fetchone()["c"]
 
     return render_template(
         "admin/panel.html",
@@ -104,6 +109,8 @@ def panel():
         ingredient_q=ingredient_q,
         candidate_ingredients=candidate_ingredients,
         ingredient_admin_q=ingredient_admin_q,
+        show_all_ingredients=show_all_ingredients,
+        total_ingredient_matches=total_ingredient_matches,
         ingredient_rows=ingredient_rows,
     )
 

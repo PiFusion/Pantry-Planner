@@ -6,12 +6,12 @@ Pantry Planner helps users select ingredients they already have and discover rec
 - Ingredient browser with search (`/ingredients`)
 - Recipe discovery (`/recipes/search`) with:
   - **Partial mode**: `?match=any` (default), with `min` threshold
-  - **Strict mode**: `?match=all` (must match all selected ingredients)
+  - **Strict mode**: `?match=all` (must match all selected ingredients; with only 1 selected ingredient strict/partial produce the same results)
   - Sort options: `?sort=match` or `?sort=name`
 - User accounts (`/auth/register`, `/auth/login`, `/auth/logout`)
 - Bookmarks (`/bookmarks/`) for logged-in users
 - Grocery list (`/grocery/`) with check/uncheck/delete/clear and print view (`/grocery/print`)
-- Admin panel (`/admin/`) for ingredient sync, user management, pantry edits, and ingredient blacklist controls (admin role required)
+- Admin panel (`/admin/`) for ingredient sync, user management, pantry edits, and ingredient blacklist controls (admin role required; includes search + optional "show all matches" list in blacklist section)
 
 ## Tech Stack
 - Python + Flask
