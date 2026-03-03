@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, g, session, request
+from flask import Blueprint, render_template, g, request, session
+
 from .db import get_db
 from .integrations.mealdb import filter_meals_by_ingredient, lookup_meal
 
@@ -21,7 +22,6 @@ def _selected_ingredient_names():
         ).fetchall()
         return [r["name"] for r in rows]
 
-    # Anonymous: map session IDs -> ingredient names
     ids = session.get("selected_ingredient_ids", [])
     if not ids:
         return []
@@ -37,78 +37,61 @@ def _selected_ingredient_names():
 @bp.get("/search")
 def search():
     selected_names = _selected_ingredient_names()
-    total = len(selected_names)
+    match_mode = request.args.get("match", "any").strip().lower()
+    if match_mode not in {"all", "any"}:
+        match_mode = "any"
 
-    if total == 0:
+    if not selected_names:
         return render_template(
             "recipes/results.html",
             selected_names=[],
             results=[],
             message="No ingredients selected yet. Go select ingredients first.",
-            mode="partial",
-            min_match=1,
-            total_selected=0,
+            match_mode=match_mode,
         )
 
-    mode = request.args.get("mode", "partial").strip().lower()
-    try:
-        min_match = int(request.args.get("min", "2"))
-    except ValueError:
-        min_match = 2
-
-    # Clamp min_match
-    if min_match < 1:
-        min_match = 1
-    if min_match > total:
-        min_match = total
-
-    if mode == "all":
-        min_match = total
-
-    meal_counts = {}  # meal_id -> count of matched ingredients
-    meal_info = {}    # meal_id -> basic info
-
-    for ing in selected_names:
-        meals = filter_meals_by_ingredient(ing) or []
-        for m in meals:
-            mid = m.get("idMeal")
-            if not mid:
+    result_map = {}
+    for ingredient in selected_names:
+        meals = filter_meals_by_ingredient(ingredient)
+        for meal in meals:
+            meal_id = meal.get("idMeal")
+            if not meal_id:
                 continue
-            meal_counts[mid] = meal_counts.get(mid, 0) + 1
-            if mid not in meal_info:
-                meal_info[mid] = {
-                    "idMeal": mid,
-                    "strMeal": m.get("strMeal"),
-                    "strMealThumb": m.get("strMealThumb"),
+            if meal_id not in result_map:
+                result_map[meal_id] = {
+                    "idMeal": meal_id,
+                    "strMeal": meal.get("strMeal"),
+                    "strMealThumb": meal.get("strMealThumb"),
+                    "matched_count": 0,
                 }
+            result_map[meal_id]["matched_count"] += 1
 
-    results = []
-    for mid, count in meal_counts.items():
-        if count >= min_match:
-            info = meal_info.get(mid, {"idMeal": mid, "strMeal": "", "strMealThumb": ""})
-            info = dict(info)
-            info["match_count"] = count
-            info["match_percent"] = round((count / total) * 100)
-            results.append(info)
+    if match_mode == "all":
+        results = [
+            meal for meal in result_map.values() if meal["matched_count"] == len(selected_names)
+        ]
+    else:
+        results = [meal for meal in result_map.values() if meal["matched_count"] > 0]
 
-    results.sort(key=lambda x: (-x["match_count"], (x.get("strMeal") or "")))
-    results = results[:75]
+    results = sorted(
+        results,
+        key=lambda x: (-(x.get("matched_count") or 0), x.get("strMeal") or ""),
+    )[:50]
 
     msg = None
-    if not results:
-        if mode == "all":
-            msg = "No recipes matched ALL selected ingredients. Try partial match (e.g., at least 2)."
-        else:
-            msg = "No recipes matched your minimum. Try lowering the minimum match."
+    if not results and match_mode == "all":
+        msg = "No recipes matched all selected ingredients. Try Partial Match mode."
+    elif not results:
+        msg = "No recipes matched any selected ingredients."
+    elif match_mode == "any":
+        msg = "Showing best partial matches first (recipes matching more selected ingredients appear first)."
 
     return render_template(
         "recipes/results.html",
         selected_names=selected_names,
         results=results,
         message=msg,
-        mode=mode,
-        min_match=min_match,
-        total_selected=total,
+        match_mode=match_mode,
     )
 
 

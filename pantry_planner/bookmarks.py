@@ -1,6 +1,5 @@
 from functools import wraps
 from flask import Blueprint, render_template, redirect, request, url_for, g, flash
-from flask import Blueprint, render_template, redirect, url_for, g, flash
 from .db import get_db
 from .integrations.mealdb import lookup_meal
 
@@ -51,7 +50,6 @@ def add(meal_id):
     )
     db.commit()
     return redirect(request.referrer or url_for("bookmarks.list_bookmarks"))
-    return redirect(url_for("bookmarks.list_bookmarks"))
 
 
 @bp.post("/remove/<meal_id>")
@@ -64,4 +62,3 @@ def remove(meal_id):
     )
     db.commit()
     return redirect(request.referrer or url_for("bookmarks.list_bookmarks"))
-    return redirect(url_for("bookmarks.list_bookmarks"))
