@@ -105,3 +105,43 @@ button { cursor: pointer; }
   .detail-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .detail-sidebar { position: static; }
 }
+
+/* Ingredient picker redesign */
+.ingredients-header { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ingredients-header h1 { margin-right: 0.5rem; }
+.ingredients-global-search { display: flex; align-items: center; gap: 0.5rem; min-width: 320px; flex: 1; max-width: 520px; }
+.selected-pill { display: inline-flex; align-items: center; justify-content: center; padding: 0.4rem 1rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border); font-weight: 600; }
+
+.ingredients-layout { display: grid; grid-template-columns: 1.75fr 1fr; gap: 1.25rem; align-items: start; }
+.panel-card { background: var(--warm-white); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+.panel-title { font-family: 'Playfair Display', serif; font-size: 2rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }
+.panel-title-split { display: flex; align-items: center; justify-content: space-between; font-size: 1.9rem; }
+.panel-title .count { font-family: 'DM Sans', sans-serif; font-size: 1.4rem; color: var(--muted); }
+.panel-inner-search { padding: 0.95rem 1.2rem; border-bottom: 1px solid var(--border); }
+
+.ingredient-picker-list { list-style: none; max-height: 66vh; overflow: auto; }
+.ingredient-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border); }
+.ingredient-row:last-child { border-bottom: none; }
+.ingredient-main { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+.ingredient-main span { font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ingredient-thumb { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); background: #f4efe8; }
+
+.ingredient-action,
+.ingredient-remove { min-width: 52px; height: 42px; padding: 0 0.8rem; border-radius: 12px; border: 1px solid var(--border); background: #fff; color: #7d7166; font-size: 1.8rem; line-height: 1; cursor: pointer; }
+.ingredient-action:hover,
+.ingredient-remove:hover { border-color: var(--accent); color: var(--accent); }
+.ingredient-added { font-size: 1.1rem; color: #60743d; background: #edf4dd; border-color: #dce8c2; min-width: 130px; }
+.ingredient-added:hover { color: #60743d; border-color: #dce8c2; }
+.ingredient-remove { font-size: 2rem; }
+
+.clear-form { padding: 0.95rem 1.2rem; border-top: 1px solid var(--border); }
+.clear-btn { width: 100%; justify-content: center; padding: 0.75rem 1rem; font-size: 1.2rem; }
+.ingredient-empty { padding: 1.1rem 1.2rem; color: var(--muted); }
+
+.toast { position: fixed; left: 1.5rem; bottom: 1.5rem; background: var(--warm-white); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; z-index: 200; transition: opacity 0.35s ease; }
+.toast form button { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 0.35rem 0.75rem; }
+.toast.hide { opacity: 0; pointer-events: none; }
+
+@media (max-width: 1100px) {
+  .ingredients-layout { grid-template-columns: 1fr; }
+}
