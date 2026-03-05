@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ meal.strMeal if meal else 'Recipe Not Found' }} — Pantry Planner{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <a href="javascript:history.back()" class="back-link">← Back to results</a>
+
+  {% if not meal %}
+    <div class="empty-state">
+      <div class="empty-icon">😕</div>
+      <p>Recipe not found.</p>
+    </div>
+  {% else %}
+
+    <div class="detail-grid">
+      <div class="detail-sidebar">
+        <div class="detail-image">
+          <img src="{{ meal.strMealThumb }}" alt="{{ meal.strMeal }}">
+        </div>
+
+        {% if meal.strYoutube %}
+          <a href="{{ meal.strYoutube }}" target="_blank" rel="noopener" class="yt-link">▶ Watch on YouTube</a>
+        {% endif %}
+
+        {% if g.user %}
+          <form method="post" action="/bookmarks/add/{{ meal.idMeal }}" style="margin-top:0.75rem">
+            <button class="btn btn-ghost" type="submit" style="width:100%">🔖 Bookmark this recipe</button>
+          </form>
+        {% endif %}
+
+        <p class="section-heading">Ingredients</p>
+        <ul class="ingredient-list">
+          {% for pair in ingredients %}
+            <li>
+              <span class="ing-name">{{ pair.ingredient }}</span>
+              <span class="ing-measure">{{ pair.measure }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+          {% if meal.strCategory %}
+            <span class="pill">{{ meal.strCategory }}</span>
+          {% endif %}
+          {% if meal.strArea %}
+            <span class="pill gray">{{ meal.strArea }}</span>
+          {% endif %}
+        </div>
+
+        <h1 style="margin-bottom:1.5rem">{{ meal.strMeal }}</h1>
+
+        <p class="section-heading">Instructions</p>
+        <div class="instructions">{{ meal.strInstructions }}</div>
+      </div>
+
+    </div>
+
+  {% endif %}
+</div>
+{% endblock %}

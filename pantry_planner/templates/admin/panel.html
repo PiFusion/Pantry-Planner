@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="section">
+  <h2>Admin Panel</h2>
+  <p><b>Ingredients in DB:</b> {{ ingredient_count }}</p>
+  <p><b>Last synced:</b> {{ last_sync or "Never" }}</p>
+
+  <form method="post" action="/admin/sync-ingredients">
+    <button type="submit">Sync Ingredients from MealDB</button>
+  </form>
+</div>
+
+<div class="section">
+  <h3>User Management</h3>
+  <p class="muted">Search users, delete users, and open pantry management for any user.</p>
+  <form method="get" action="/admin/" class="row">
+    <input name="user_q" value="{{ user_q }}" placeholder="Search users...">
+    <button type="submit">Search</button>
+  </form>
+
+  {% if users %}
+    <ul>
+      {% for u in users %}
+        <li>
+          <b>{{ u.username }}</b> ({{ u.role }})
+          <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
+          <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;" onsubmit='return confirmDeleteUser(this, {{ u.username|tojson }}, {{ u.role|tojson }});'>
+            <input type="hidden" name="confirm_delete" value="no">
+            <input type="hidden" name="admin_confirm_username" value="">
+            <button type="submit">Delete user</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No users found.</p>
+  {% endif %}
+</div>
+
+{% if manage_user %}
+<div class="section">
+  <h3>Manage Pantry for {{ manage_user.username }}</h3>
+
+  <h4>Current pantry ingredients</h4>
+  {% if selected_ingredients %}
+    <ul>
+      {% for ing in selected_ingredients %}
+        <li>
+          {{ ing.name }}
+          <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/remove/{{ ing.id }}" style="display:inline;" onsubmit="return confirm('Remove this ingredient from user pantry?');">
+            <button type="submit">Remove</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No ingredients selected.</p>
+  {% endif %}
+
+  <h4>Add ingredient</h4>
+  <form method="get" action="/admin/" class="row">
+    <input type="hidden" name="manage_user_id" value="{{ manage_user.id }}">
+    <input type="hidden" name="user_q" value="{{ user_q }}">
+    <input name="ingredient_q" value="{{ ingredient_q }}" placeholder="Search ingredients to add...">
+    <button type="submit">Search</button>
+  </form>
+
+  <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/add" class="row">
+    <select name="ingredient_id">
+      <option value="">Select ingredient</option>
+      {% for ing in candidate_ingredients %}
+        <option value="{{ ing.id }}">{{ ing.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Add to pantry</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="section">
+  <h3>Ingredient Moderation (Blacklist)</h3>
+  <p class="muted">Blacklisted ingredients are hidden from user ingredient selection lists.</p>
+  <form method="get" action="/admin/" class="row">
+    <input name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients...">
+    <label style="display:inline-flex; align-items:center; gap:.35rem;">
+      <input type="checkbox" name="show_all_ingredients" value="1" {% if show_all_ingredients %}checked{% endif %}>
+      Show all matches
+    </label>
+    <button type="submit">Search</button>
+  </form>
+
+  <p class="muted">
+    Showing {{ ingredient_rows|length }} of {{ total_ingredient_matches }} matching ingredient(s).
+    {% if not show_all_ingredients and total_ingredient_matches > 100 %}
+      Refine search or enable <b>Show all matches</b>.
+    {% endif %}
+  </p>
+
+  {% if ingredient_rows %}
+    <ul>
+      {% for ing in ingredient_rows %}
+        <li>
+          {{ ing.name }}
+          {% if ing.hidden %}<b>(blacklisted)</b>{% endif %}
+          <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;" onsubmit='return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});'>
+            <input type="hidden" name="confirm_blacklist" value="no">
+            <button type="submit">{% if ing.hidden %}Unblacklist{% else %}Blacklist{% endif %}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No ingredients found.</p>
+  {% endif %}
+</div>
+
+<script>
+function confirmDeleteUser(form, username, role) {
+  if (!confirm(`Delete user ${username}? This removes their pantry/bookmarks/grocery data.`)) {
+    return false;
+  }
+  form.querySelector('input[name="confirm_delete"]').value = 'yes';
+  if (role === 'admin') {
+    const typed = prompt(`Type the admin username (${username}) to confirm deleting an admin user:`) || '';
+    form.querySelector('input[name="admin_confirm_username"]').value = typed;
+  }
+  return true;
+}
+
+function confirmBlacklist(form, ingredient, isHidden) {
+  const action = isHidden ? 'unblacklist' : 'blacklist';
+  if (!confirm(`Are you sure you want to ${action} "${ingredient}"?`)) {
+    return false;
+  }
+  form.querySelector('input[name="confirm_blacklist"]').value = 'yes';
+  return true;
+}
+</script>
+{% endblock %}

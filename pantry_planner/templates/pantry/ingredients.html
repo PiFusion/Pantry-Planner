@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Ingredients</h2>
+
+<form method="get" action="/ingredients">
+  <input name="q" value="{{ q }}" placeholder="Search ingredients...">
+  <button type="submit">Search</button>
+</form>
+
+<p>First time setup: run <code>flask --app pantry_planner sync-ingredients</code> (or use Admin Panel if you’re admin).</p>
+
+<ul>
+  {% for ing in ingredients %}
+    <li>
+      <form method="post" action="/ingredients/toggle" style="display:inline;">
+        <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+        <button type="submit">
+          {% if ing.id in selected_ids %}Remove{% else %}Add{% endif %}
+        </button>
+      </form>
+      {{ ing.name }}
+      {% if ing.id in selected_ids %}<b>(selected)</b>{% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

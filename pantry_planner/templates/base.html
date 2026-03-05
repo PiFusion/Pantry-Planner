@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Pantry Planner{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <nav>
+    <a href="/ingredients" class="nav-brand">PantryPlanner</a>
+    <a href="/ingredients">Ingredients</a>
+    <a href="/recipes/search">Find Recipes</a>
+    <a href="/bookmarks/">Bookmarks</a>
+    {% if g.user %}
+      <a href="/grocery/">Grocery List</a>
+    {% endif %}
+    {% if g.user and g.user['role'] == 'admin' %}
+      <a href="/admin/">Admin</a>
+    {% endif %}
+    <div class="nav-right">
+      {% if g.user %}
+        <span class="nav-user">{{ g.user['username'] }}</span>
+        <a href="/auth/logout" class="btn btn-ghost btn-sm">Log out</a>
+      {% else %}
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Log in</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Sign up</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flashes">
+        {% for m in messages %}
+          <div class="flash">{{ m }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+</body>
+</html>
