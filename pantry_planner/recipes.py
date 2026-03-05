@@ -37,7 +37,15 @@ def _selected_ingredient_names():
 @bp.get("/search")
 def search():
     selected_names = _selected_ingredient_names()
-    match_mode = request.args.get("match", "any").strip().lower()
+    raw_match_mode = request.args.get("match")
+    match_mode = (raw_match_mode or "").strip().lower()
+    if match_mode not in {"all", "any"}:
+        # Backward-compatible alias from older links/docs.
+        legacy_mode = request.args.get("mode", "").strip().lower()
+        if legacy_mode in {"all", "strict"}:
+            match_mode = "all"
+        elif legacy_mode in {"any", "partial"}:
+            match_mode = "any"
     if match_mode not in {"all", "any"}:
         match_mode = "any"
 
@@ -57,6 +65,7 @@ def search():
             sort_mode=sort_mode,
             min_match=1,
             effective_min=0,
+            total_selected=0,
         )
 
     result_map = {}
@@ -85,7 +94,13 @@ def search():
         requested_min = min_match if min_match is not None else 1
         effective_min = max(1, min(requested_min, len(selected_names)))
 
+    total_selected = len(selected_names)
+
     results = [meal for meal in result_map.values() if meal["matched_count"] >= effective_min]
+
+    for meal in results:
+        meal["match_count"] = meal["matched_count"]
+        meal["match_percent"] = round((meal["matched_count"] / total_selected) * 100) if total_selected else 0
 
     if sort_mode == "name":
         results = sorted(results, key=lambda x: (x.get("strMeal") or "", -(x.get("matched_count") or 0)))
@@ -105,6 +120,13 @@ def search():
     elif match_mode == "any":
         msg = f"Showing recipes matching at least {effective_min} selected ingredient(s)."
 
+    if match_mode == "all" and len(selected_names) == 1:
+        strict_note = (
+            "Strict and Partial behave the same when only 1 ingredient is selected. "
+            "Select 2+ ingredients to see a difference."
+        )
+        msg = f"{msg} {strict_note}".strip() if msg else strict_note
+
     return render_template(
         "recipes/results.html",
         selected_names=selected_names,
@@ -114,6 +136,7 @@ def search():
         sort_mode=sort_mode,
         min_match=min_match if min_match is not None else 1,
         effective_min=effective_min,
+        total_selected=total_selected,
     )
 
 

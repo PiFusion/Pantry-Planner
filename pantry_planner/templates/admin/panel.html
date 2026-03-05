@@ -24,7 +24,7 @@
         <li>
           <b>{{ u.username }}</b> ({{ u.role }})
           <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
-          <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;" onsubmit="return confirmDeleteUser(this, '{{ u.username }}', '{{ u.role }}');">
+          <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;" onsubmit='return confirmDeleteUser(this, {{ u.username|tojson }}, {{ u.role|tojson }});'>
             <input type="hidden" name="confirm_delete" value="no">
             <input type="hidden" name="admin_confirm_username" value="">
             <button type="submit">Delete user</button>
@@ -82,8 +82,19 @@
   <p class="muted">Blacklisted ingredients are hidden from user ingredient selection lists.</p>
   <form method="get" action="/admin/" class="row">
     <input name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients...">
+    <label style="display:inline-flex; align-items:center; gap:.35rem;">
+      <input type="checkbox" name="show_all_ingredients" value="1" {% if show_all_ingredients %}checked{% endif %}>
+      Show all matches
+    </label>
     <button type="submit">Search</button>
   </form>
+
+  <p class="muted">
+    Showing {{ ingredient_rows|length }} of {{ total_ingredient_matches }} matching ingredient(s).
+    {% if not show_all_ingredients and total_ingredient_matches > 100 %}
+      Refine search or enable <b>Show all matches</b>.
+    {% endif %}
+  </p>
 
   {% if ingredient_rows %}
     <ul>
@@ -91,7 +102,7 @@
         <li>
           {{ ing.name }}
           {% if ing.hidden %}<b>(blacklisted)</b>{% endif %}
-          <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;" onsubmit="return confirmBlacklist(this, '{{ ing.name }}', {{ 1 if ing.hidden else 0 }});">
+          <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;" onsubmit='return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});'>
             <input type="hidden" name="confirm_blacklist" value="no">
             <button type="submit">{% if ing.hidden %}Unblacklist{% else %}Blacklist{% endif %}</button>
           </form>
