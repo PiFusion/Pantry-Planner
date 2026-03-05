@@ -1,26 +1,120 @@
 {% extends "base.html" %}
+{% block title %}Ingredients — Pantry Planner{% endblock %}
+
 {% block content %}
-<h2>Ingredients</h2>
+<div class="page ingredients-page">
+  <div class="ingredients-header">
+    <h1>Ingredients</h1>
+    <form method="get" action="/ingredients" class="ingredients-global-search">
+      <input name="q" value="{{ q }}" class="form-control" placeholder="Search ingredients..." autocomplete="off">
+      <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    </form>
+    <span class="selected-pill">{{ selected_count }} selected</span>
+  </div>
 
-<form method="get" action="/ingredients">
-  <input name="q" value="{{ q }}" placeholder="Search ingredients...">
-  <button type="submit">Search</button>
-</form>
+  <div class="ingredients-layout">
+    <section class="panel-card">
+      <div class="panel-title">Ingredients</div>
+      <div class="panel-inner-search">
+        <input id="ingredientLocalSearch" class="form-control" placeholder="Search ingredients..." autocomplete="off">
+      </div>
 
-<p>First time setup: run <code>flask --app pantry_planner sync-ingredients</code> (or use Admin Panel if you’re admin).</p>
+      <ul class="ingredient-picker-list" id="ingredientPickerList">
+        {% for ing in ingredients %}
+          <li class="ingredient-row" data-name="{{ ing.name|lower }}">
+            <div class="ingredient-main">
+              <img
+                class="ingredient-thumb"
+                src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
+                alt="{{ ing.name }}"
+                loading="lazy"
+                onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
+              >
+              <span>{{ ing.name }}</span>
+            </div>
 
-<ul>
-  {% for ing in ingredients %}
-    <li>
-      <form method="post" action="/ingredients/toggle" style="display:inline;">
-        <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
-        <button type="submit">
-          {% if ing.id in selected_ids %}Remove{% else %}Add{% endif %}
-        </button>
+            <form method="post" action="/ingredients/toggle">
+              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+              <input type="hidden" name="return_q" value="{{ q }}">
+              {% if ing.id in selected_ids %}
+                <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+              {% else %}
+                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}">+</button>
+              {% endif %}
+            </form>
+          </li>
+        {% else %}
+          <li class="ingredient-empty">No ingredients found.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <aside class="panel-card">
+      <div class="panel-title panel-title-split">
+        <span>Selected Ingredients</span>
+        <span class="count">{{ selected_count }}</span>
+      </div>
+
+      <ul class="ingredient-picker-list selected-list" id="selectedList">
+        {% for ing in selected_ingredients %}
+          <li class="ingredient-row" data-name="{{ ing.name|lower }}">
+            <div class="ingredient-main">
+              <img
+                class="ingredient-thumb"
+                src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
+                alt="{{ ing.name }}"
+                loading="lazy"
+                onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
+              >
+              <span>{{ ing.name }}</span>
+            </div>
+
+            <form method="post" action="/ingredients/toggle">
+              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+              <input type="hidden" name="return_q" value="{{ q }}">
+              <button type="submit" class="ingredient-remove" aria-label="Remove {{ ing.name }}">×</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="ingredient-empty">No selected ingredients yet.</li>
+        {% endfor %}
+      </ul>
+
+      {% if selected_count > 0 %}
+        <form method="post" action="/ingredients/clear" class="clear-form">
+          <input type="hidden" name="return_q" value="{{ q }}">
+          <button class="btn btn-ghost clear-btn" type="submit">Clear all</button>
+        </form>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if last_action == 'added' and last_name and last_ingredient_id %}
+    <div class="toast" id="undoToast">
+      <span>✓ Added {{ last_name }}</span>
+      <form method="post" action="/ingredients/toggle">
+        <input type="hidden" name="ingredient_id" value="{{ last_ingredient_id }}">
+        <input type="hidden" name="return_q" value="{{ q }}">
+        <button type="submit">Undo</button>
       </form>
-      {{ ing.name }}
-      {% if ing.id in selected_ids %}<b>(selected)</b>{% endif %}
-    </li>
-  {% endfor %}
-</ul>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+const localSearch = document.getElementById('ingredientLocalSearch');
+if (localSearch) {
+  localSearch.addEventListener('input', () => {
+    const q = localSearch.value.trim().toLowerCase();
+    document.querySelectorAll('#ingredientPickerList .ingredient-row').forEach((row) => {
+      row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+const toast = document.getElementById('undoToast');
+if (toast) {
+  setTimeout(() => toast.classList.add('hide'), 4500);
+}
+</script>
 {% endblock %}
