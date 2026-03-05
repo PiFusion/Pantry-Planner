@@ -1,72 +1,76 @@
 {% extends "base.html" %}
+{% block title %}Find Recipes — Pantry Planner{% endblock %}
+
 {% block content %}
-<div class="section">
-  <h2>Recipe Results</h2>
+<div class="page">
+  {% set total_selected = selected_names|length %}
 
-  <p><b>Selected ingredients:</b>
-    {% if selected_names %}
-      {{ selected_names|join(", ") }}
-    {% else %}
-      none
+  <div class="page-header">
+    <div>
+      <h1>Find Recipes</h1>
+      <p>{{ total_selected }} ingredient{{ 's' if total_selected != 1 else '' }} selected</p>
+    </div>
+    {% if total_selected > 0 %}
+      <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap">
+        <form method="get" action="/recipes/search" style="display:flex;gap:0.5rem;align-items:center">
+          <input type="hidden" name="match" value="any">
+          <input type="hidden" name="sort" value="{{ sort_mode }}">
+          <label style="font-size:0.85rem;color:var(--muted);">Min match:</label>
+          <select name="min" class="form-control" style="width:auto;padding:0.4rem 0.6rem">
+            {% for n in range(1, total_selected + 1) %}
+              <option value="{{ n }}" {% if n == effective_min %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-ghost btn-sm" type="submit">Filter</button>
+        </form>
+        <a href="/recipes/search?match=all&sort={{ sort_mode }}" class="btn btn-primary btn-sm">Match All</a>
+      </div>
     {% endif %}
-  </p>
+  </div>
 
-  <form method="get" action="/recipes/search" class="row">
-    <label>
-      Match mode:
-      <select name="match" onchange="toggleMinField()">
-        <option value="any" {% if match_mode == 'any' %}selected{% endif %}>Partial (any selected ingredient)</option>
-        <option value="all" {% if match_mode == 'all' %}selected{% endif %}>Strict (all selected ingredients)</option>
-      </select>
-    </label>
-
-    <label id="min-field" {% if match_mode == 'all' %}style="display:none;"{% endif %}>
-      Minimum matched ingredients:
-      <input type="number" name="min" min="1" value="{{ min_match }}" style="width:80px;">
-    </label>
-
-    <label>
-      Sort:
-      <select name="sort">
-        <option value="match" {% if sort_mode == 'match' %}selected{% endif %}>Best match</option>
-        <option value="name" {% if sort_mode == 'name' %}selected{% endif %}>Name</option>
-      </select>
-    </label>
-
-    <button type="submit">Update</button>
-  </form>
-
-  {% if match_mode == 'any' %}
-    <p class="muted">Current minimum threshold: {{ effective_min }} ingredient(s).</p>
+  {% if selected_names %}
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.5rem">
+      {% for name in selected_names %}
+        <span class="pill green">{{ name }}</span>
+      {% endfor %}
+    </div>
   {% endif %}
 
-  {% if message %}<p>{{ message }}</p>{% endif %}
+  {% if message and not results %}
+    <div class="empty-state">
+      <div class="empty-icon">🍽️</div>
+      <p>{{ message }}</p>
+      <a href="/ingredients" class="btn btn-primary" style="margin-top:1rem">Update Pantry</a>
+    </div>
+  {% elif results %}
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem">
+      {{ results|length }} recipe{{ 's' if results|length != 1 else '' }} found
+      {% if message %}• {{ message }}{% endif %}
+    </p>
 
-  <ul>
-    {% for r in results %}
-      <li>
-        <a href="/recipes/{{ r.idMeal }}">{{ r.strMeal }}</a>
-        {% if r.matched_count is defined %}
-          - matched {{ r.matched_count }} ingredient{{ '' if r.matched_count == 1 else 's' }}
-        {% endif %}
-        {% if r.matched_ingredients %}
-          <span class="muted">(e.g. {{ r.matched_ingredients[:3]|join(', ') }})</span>
-        {% endif %}
-        {% if g.user %}
-          <form method="post" action="/bookmarks/add/{{ r.idMeal }}" style="display:inline;">
-            <button type="submit">Bookmark</button>
-          </form>
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
+    <div class="recipe-grid">
+      {% for r in results %}
+        {% set match_percent = ((100 * r.matched_count / total_selected) if total_selected else 0)|round|int %}
+        <a href="/recipes/{{ r.idMeal }}" class="recipe-card">
+          {% if r.strMealThumb %}
+            <img src="{{ r.strMealThumb }}/preview" alt="{{ r.strMeal }}" loading="lazy">
+          {% else %}
+            <div style="aspect-ratio:4/3;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem">🍳</div>
+          {% endif %}
+          <div class="recipe-card-body">
+            <div class="coverage-bar">
+              <div class="coverage-fill" style="width:{{ match_percent }}%"></div>
+            </div>
+            <h3>{{ r.strMeal }}</h3>
+            <div class="recipe-card-meta">
+              <span class="pill">{{ match_percent }}% match</span>
+              <span class="pill gray">{{ r.matched_count }}/{{ total_selected }}</span>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
 </div>
-
-<script>
-function toggleMinField() {
-  const match = document.querySelector('select[name="match"]').value;
-  const minField = document.getElementById('min-field');
-  minField.style.display = match === 'all' ? 'none' : 'inline-flex';
-}
-</script>
 {% endblock %}
