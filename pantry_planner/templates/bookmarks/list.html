@@ -1,19 +1,103 @@
 {% extends "base.html" %}
-{% block content %}
-<h2>Bookmarks</h2>
+{% block title %}Bookmarks — Pantry Planner{% endblock %}
 
-{% if not bookmarks %}
-  <p>No bookmarks yet.</p>
-{% else %}
-  <ul>
-  {% for b in bookmarks %}
-    <li>
-      <a href="/recipes/{{ b.mealdb_meal_id }}">{{ b.meal_name or b.mealdb_meal_id }}</a>
-      <form method="post" action="/bookmarks/remove/{{ b.mealdb_meal_id }}" style="display:inline;">
-        <button type="submit">Remove</button>
-      </form>
-    </li>
-  {% endfor %}
-  </ul>
-{% endif %}
+{% block content %}
+<div class="page">
+  <div class="bookmarks-header">
+    <h1>Bookmarks</h1>
+    <form method="get" action="/bookmarks/" class="bookmarks-search">
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <input name="q" value="{{ q }}" class="form-control" placeholder="Search bookmarks..." autocomplete="off">
+      <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    </form>
+  </div>
+
+  {% if not bookmarks %}
+    <div class="empty-state">
+      <div class="empty-icon">🔖</div>
+      <p>No bookmarks yet. Save recipes from search results to see them here.</p>
+    </div>
+  {% else %}
+    <div class="bookmarks-layout">
+      <section class="bookmarks-list-card">
+        <div class="bookmarks-list-head">
+          <h2>All recipes</h2>
+          <form method="get" action="/bookmarks/">
+            <input type="hidden" name="q" value="{{ q }}">
+            <select name="sort" class="form-control" onchange="this.form.submit()">
+              <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Sort: Newest</option>
+              <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort: Name</option>
+            </select>
+          </form>
+        </div>
+
+        <ul class="bookmark-list">
+          {% for b in bookmarks %}
+            <li class="bookmark-item {% if b.mealdb_meal_id == selected_id %}active{% endif %}">
+              <a href="/bookmarks/?selected={{ b.mealdb_meal_id }}&q={{ q }}&sort={{ sort }}" class="bookmark-item-main">
+                <img src="{{ b.meal_thumb or 'https://www.themealdb.com/images/ingredients/Chicken-Small.png' }}" alt="{{ b.meal_name or b.mealdb_meal_id }}" loading="lazy">
+                <div>
+                  <h3>{{ b.meal_name or b.mealdb_meal_id }}</h3>
+                  <div class="bookmark-chips">
+                    <span class="pill gray">Saved</span>
+                    <span class="pill gray">Recipe</span>
+                  </div>
+                </div>
+              </a>
+              <form method="post" action="/bookmarks/remove/{{ b.mealdb_meal_id }}">
+                <button class="bookmark-icon-btn" type="submit" title="Remove bookmark">🔖</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="bookmarks-preview-card">
+        {% if selected %}
+          <div class="bookmarks-preview-top">
+            <img
+              class="preview-image"
+              src="{{ (selected_detail.strMealThumb if selected_detail else selected.meal_thumb) or 'https://www.themealdb.com/images/ingredients/Chicken-Small.png' }}"
+              alt="{{ (selected_detail.strMeal if selected_detail else selected.meal_name) or selected.mealdb_meal_id }}"
+            >
+            <div class="preview-body">
+              <div class="preview-title-row">
+                <h1>{{ (selected_detail.strMeal if selected_detail else selected.meal_name) or selected.mealdb_meal_id }}</h1>
+                <form method="post" action="/bookmarks/remove/{{ selected.mealdb_meal_id }}">
+                  <button class="bookmark-icon-btn" type="submit" title="Remove bookmark">🔖</button>
+                </form>
+              </div>
+              <div class="bookmark-chips">
+                {% if selected_detail and selected_detail.strCategory %}
+                  <span class="pill gray">{{ selected_detail.strCategory }}</span>
+                {% endif %}
+                {% if selected_detail and selected_detail.strArea %}
+                  <span class="pill gray">{{ selected_detail.strArea }}</span>
+                {% endif %}
+                {% if not selected_detail %}
+                  <span class="pill gray">Saved Recipe</span>
+                {% endif %}
+              </div>
+
+              <p>
+                {% if selected_detail and selected_detail.strInstructions %}
+                  {{ selected_detail.strInstructions[:220] }}{% if selected_detail.strInstructions|length > 220 %}...{% endif %}
+                {% else %}
+                  View this bookmarked recipe or add its ingredients straight to your grocery list.
+                {% endif %}
+              </p>
+
+              <div class="preview-actions">
+                <a href="/recipes/{{ selected.mealdb_meal_id }}" class="btn btn-primary">View Recipe</a>
+                <form method="post" action="/bookmarks/add-to-grocery/{{ selected.mealdb_meal_id }}">
+                  <button type="submit" class="btn btn-ghost">Add all ingredients to Grocery List</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

@@ -24,7 +24,7 @@
         <li>
           <b>{{ u.username }}</b> ({{ u.role }})
           <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
-          <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;" onsubmit="return confirmDeleteUser(this, '{{ u.username }}', '{{ u.role }}');">
+          <form method="post" action="/admin/users/delete/{{ u.id }}" style="display:inline;" onsubmit="return confirmDeleteUser(this, {{ u.username|tojson }}, {{ u.role|tojson }});">
             <input type="hidden" name="confirm_delete" value="no">
             <input type="hidden" name="admin_confirm_username" value="">
             <button type="submit">Delete user</button>
@@ -91,7 +91,7 @@
         <li>
           {{ ing.name }}
           {% if ing.hidden %}<b>(blacklisted)</b>{% endif %}
-          <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;" onsubmit="return confirmBlacklist(this, '{{ ing.name }}', {{ 1 if ing.hidden else 0 }});">
+          <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" style="display:inline;" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});">
             <input type="hidden" name="confirm_blacklist" value="no">
             <button type="submit">{% if ing.hidden %}Unblacklist{% else %}Blacklist{% endif %}</button>
           </form>

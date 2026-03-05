@@ -1,26 +1,274 @@
 {% extends "base.html" %}
+{% block title %}Ingredients — Pantry Planner{% endblock %}
+
 {% block content %}
-<h2>Ingredients</h2>
+<div class="page ingredients-page">
+  <div class="ingredients-header">
+    <h1>Ingredients</h1>
+    <form method="get" action="/ingredients" class="ingredients-global-search">
+      <input name="q" value="{{ q }}" class="form-control" placeholder="Search ingredients..." autocomplete="off">
+      <button type="submit" class="btn btn-ghost btn-sm">Search</button>
+    </form>
+    <span class="selected-pill" id="selectedCountPill">{{ selected_count }} selected</span>
+  </div>
 
-<form method="get" action="/ingredients">
-  <input name="q" value="{{ q }}" placeholder="Search ingredients...">
-  <button type="submit">Search</button>
-</form>
+  <div class="ingredients-layout">
+    <section class="panel-card">
+      <div class="panel-title">Ingredients</div>
+      <div class="panel-inner-search">
+        <input id="ingredientLocalSearch" class="form-control" placeholder="Search ingredients..." autocomplete="off">
+      </div>
 
-<p>First time setup: run <code>flask --app pantry_planner sync-ingredients</code> (or use Admin Panel if you’re admin).</p>
+      <ul class="ingredient-picker-list" id="ingredientPickerList">
+        {% for ing in ingredients %}
+          <li class="ingredient-row" data-name="{{ ing.name|lower }}" data-id="{{ ing.id }}" data-ingredient-name="{{ ing.name }}">
+            <div class="ingredient-main">
+              <img
+                class="ingredient-thumb"
+                src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
+                alt="{{ ing.name }}"
+                loading="lazy"
+                onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
+              >
+              <span>{{ ing.name }}</span>
+            </div>
 
-<ul>
-  {% for ing in ingredients %}
-    <li>
-      <form method="post" action="/ingredients/toggle" style="display:inline;">
-        <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
-        <button type="submit">
-          {% if ing.id in selected_ids %}Remove{% else %}Add{% endif %}
-        </button>
+            <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+              <input type="hidden" name="return_q" value="{{ q }}">
+              {% if ing.id in selected_ids %}
+                <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+              {% else %}
+                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}">+</button>
+              {% endif %}
+            </form>
+          </li>
+        {% else %}
+          <li class="ingredient-empty">No ingredients found.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <aside class="panel-card">
+      <div class="panel-title panel-title-split">
+        <span>Selected Ingredients</span>
+        <span class="count" id="selectedCountHeader">{{ selected_count }}</span>
+      </div>
+
+      <ul class="ingredient-picker-list selected-list" id="selectedList">
+        {% for ing in selected_ingredients %}
+          <li class="ingredient-row" data-id="{{ ing.id }}" data-name="{{ ing.name|lower }}">
+            <div class="ingredient-main">
+              <img
+                class="ingredient-thumb"
+                src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
+                alt="{{ ing.name }}"
+                loading="lazy"
+                onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
+              >
+              <span>{{ ing.name }}</span>
+            </div>
+
+            <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+              <input type="hidden" name="return_q" value="{{ q }}">
+              <button type="submit" class="ingredient-remove" aria-label="Remove {{ ing.name }}">×</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="ingredient-empty" id="selectedEmpty">No selected ingredients yet.</li>
+        {% endfor %}
+      </ul>
+
+      {% if selected_count > 0 %}
+        <form method="post" action="/ingredients/clear" class="clear-form" id="clearForm">
+          <input type="hidden" name="return_q" value="{{ q }}">
+          <button class="btn btn-ghost clear-btn" type="submit">Clear all</button>
+        </form>
+      {% else %}
+        <form method="post" action="/ingredients/clear" class="clear-form hidden" id="clearForm">
+          <input type="hidden" name="return_q" value="{{ q }}">
+          <button class="btn btn-ghost clear-btn" type="submit">Clear all</button>
+        </form>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if last_action == 'added' and last_name and last_ingredient_id %}
+    <div class="toast" id="undoToast" data-id="{{ last_ingredient_id }}" data-name="{{ last_name }}">
+      <span>✓ Added {{ last_name }}</span>
+      <button type="button" id="undoButton">Undo</button>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+const localSearch = document.getElementById('ingredientLocalSearch');
+const selectedCountPill = document.getElementById('selectedCountPill');
+const selectedCountHeader = document.getElementById('selectedCountHeader');
+const selectedList = document.getElementById('selectedList');
+const clearForm = document.getElementById('clearForm');
+const ingredientRows = document.querySelectorAll('#ingredientPickerList .ingredient-row');
+const returnQ = {{ q|tojson }};
+
+if (localSearch) {
+  localSearch.addEventListener('input', () => {
+    const q = localSearch.value.trim().toLowerCase();
+    document.querySelectorAll('#ingredientPickerList .ingredient-row').forEach((row) => {
+      row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+function buildThumb(name) {
+  return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
+}
+
+function updateSelectedList(items) {
+  if (!selectedList) return;
+  selectedList.innerHTML = '';
+
+  if (!items.length) {
+    const empty = document.createElement('li');
+    empty.className = 'ingredient-empty';
+    empty.id = 'selectedEmpty';
+    empty.textContent = 'No selected ingredients yet.';
+    selectedList.appendChild(empty);
+    clearForm.classList.add('hidden');
+    return;
+  }
+
+  clearForm.classList.remove('hidden');
+  items.forEach((ing) => {
+    const li = document.createElement('li');
+    li.className = 'ingredient-row';
+    li.dataset.id = ing.id;
+
+    li.innerHTML = `
+      <div class="ingredient-main">
+        <img class="ingredient-thumb" src="${buildThumb(ing.name)}" alt="${ing.name}" loading="lazy">
+        <span>${ing.name}</span>
+      </div>
+      <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+        <input type="hidden" name="ingredient_id" value="${ing.id}">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <button type="submit" class="ingredient-remove" aria-label="Remove ${ing.name}">×</button>
       </form>
-      {{ ing.name }}
-      {% if ing.id in selected_ids %}<b>(selected)</b>{% endif %}
-    </li>
-  {% endfor %}
-</ul>
+    `;
+
+    const img = li.querySelector('img');
+    img.onerror = () => { img.src = 'https://www.themealdb.com/images/ingredients/Chicken-Small.png'; };
+    selectedList.appendChild(li);
+  });
+}
+
+function updateLeftButtons(selectedIds) {
+  ingredientRows.forEach((row) => {
+    const ingId = Number(row.dataset.id);
+    const form = row.querySelector('form');
+    if (!form) return;
+    if (selectedIds.includes(ingId)) {
+      form.innerHTML = `
+        <input type="hidden" name="ingredient_id" value="${ingId}">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+      `;
+    } else {
+      const name = row.dataset.ingredientName || 'ingredient';
+      form.innerHTML = `
+        <input type="hidden" name="ingredient_id" value="${ingId}">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <button type="submit" class="ingredient-action" aria-label="Add ${name}">+</button>
+      `;
+    }
+  });
+}
+
+function showToast(name, id) {
+  const existing = document.getElementById('undoToast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.id = 'undoToast';
+  toast.innerHTML = `<span>✓ Added ${name}</span><button type="button" id="undoButton">Undo</button>`;
+  document.body.appendChild(toast);
+
+  document.getElementById('undoButton').addEventListener('click', () => {
+    const body = new URLSearchParams({ ingredient_id: String(id), return_q: returnQ });
+    fetch('/ingredients/toggle-async', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body,
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.ok) return;
+        selectedCountPill.textContent = `${data.selected_count} selected`;
+        selectedCountHeader.textContent = data.selected_count;
+        updateSelectedList(data.selected_ingredients || []);
+        updateLeftButtons(data.selected_ids || []);
+      })
+      .finally(() => toast.remove());
+  });
+
+  setTimeout(() => toast.classList.add('hide'), 3500);
+  setTimeout(() => toast.remove(), 4200);
+}
+
+document.addEventListener('submit', (e) => {
+  const form = e.target;
+  if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
+  e.preventDefault();
+
+  const endpoint = form.id === 'clearForm' ? '/ingredients/clear-async' : '/ingredients/toggle-async';
+  const body = new URLSearchParams(new FormData(form));
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+    body,
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.ok) return;
+      selectedCountPill.textContent = `${data.selected_count} selected`;
+      selectedCountHeader.textContent = data.selected_count;
+      updateSelectedList(data.selected_ingredients || []);
+      updateLeftButtons(data.selected_ids || []);
+      if (data.action === 'added') {
+        showToast(data.ingredient_name, data.ingredient_id);
+      }
+    })
+    .catch(() => {
+      form.submit();
+    });
+});
+
+const toast = document.getElementById('undoToast');
+if (toast) {
+  const undo = document.getElementById('undoButton');
+  if (undo) {
+    undo.addEventListener('click', () => {
+      const body = new URLSearchParams({ ingredient_id: toast.dataset.id, return_q: returnQ });
+      fetch('/ingredients/toggle-async', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.ok) return;
+          selectedCountPill.textContent = `${data.selected_count} selected`;
+          selectedCountHeader.textContent = data.selected_count;
+          updateSelectedList(data.selected_ingredients || []);
+          updateLeftButtons(data.selected_ids || []);
+        })
+        .finally(() => toast.remove());
+    });
+  }
+  setTimeout(() => toast.classList.add('hide'), 4500);
+  setTimeout(() => toast.remove(), 5200);
+}
+</script>
 {% endblock %}
