@@ -4,7 +4,6 @@
 {% block content %}
 <div class="page ingredients-page">
   <div class="ingredients-header">
-    <h1>Ingredients</h1>
     <form method="get" action="/ingredients" class="ingredients-global-search">
       <input name="q" value="{{ q }}" class="form-control" placeholder="Search ingredients..." autocomplete="off">
       <button type="submit" class="btn btn-ghost btn-sm">Search</button>
@@ -184,6 +183,13 @@ function updateLeftButtons(selectedIds) {
   });
 }
 
+function setPendingState(form, isPending) {
+  const button = form.querySelector('button');
+  if (!button) return;
+  button.disabled = isPending;
+  button.classList.toggle('is-pending', isPending);
+}
+
 function showToast(name, id) {
   const existing = document.getElementById('undoToast');
   if (existing) existing.remove();
@@ -221,6 +227,8 @@ document.addEventListener('submit', (e) => {
   if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
   e.preventDefault();
 
+  setPendingState(form, true);
+
   const endpoint = form.id === 'clearForm' ? '/ingredients/clear-async' : '/ingredients/toggle-async';
   const body = new URLSearchParams(new FormData(form));
 
@@ -242,7 +250,21 @@ document.addEventListener('submit', (e) => {
     })
     .catch(() => {
       form.submit();
+    })
+    .finally(() => {
+      setPendingState(form, false);
     });
+});
+
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('#ingredientPickerList .ingredient-row');
+  if (!row) return;
+
+  if (e.target.closest('button, input, a, form')) return;
+
+  const form = row.querySelector('.ingredient-toggle-form');
+  if (!form) return;
+  form.requestSubmit();
 });
 
 const toast = document.getElementById('undoToast');

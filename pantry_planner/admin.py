@@ -93,6 +93,16 @@ def panel():
         (f"%{ingredient_admin_q}%",),
     ).fetchall()
 
+    blacklisted_ingredients = db.execute(
+        """
+        SELECT id, name
+        FROM ingredients
+        WHERE hidden = 1
+        ORDER BY name
+        LIMIT 100
+        """
+    ).fetchall()
+
     return render_template(
         "admin/panel.html",
         last_sync=(last_sync["last_sync"] if last_sync else None),
@@ -105,6 +115,7 @@ def panel():
         candidate_ingredients=candidate_ingredients,
         ingredient_admin_q=ingredient_admin_q,
         ingredient_rows=ingredient_rows,
+        blacklisted_ingredients=blacklisted_ingredients,
     )
 
 
