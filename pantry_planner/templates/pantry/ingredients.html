@@ -3,15 +3,6 @@
 
 {% block content %}
 <div class="page ingredients-page">
-  <div class="ingredients-header">
-    <h1>Ingredients</h1>
-    <form method="get" action="/ingredients" class="ingredients-global-search">
-      <input name="q" value="{{ q }}" class="form-control" placeholder="Search ingredients..." autocomplete="off">
-      <button type="submit" class="btn btn-ghost btn-sm">Search</button>
-    </form>
-    <span class="selected-pill" id="selectedCountPill">{{ selected_count }} selected</span>
-  </div>
-
   <div class="ingredients-layout">
     <section class="panel-card">
       <div class="panel-title">Ingredients</div>
@@ -104,7 +95,6 @@
 
 <script>
 const localSearch = document.getElementById('ingredientLocalSearch');
-const selectedCountPill = document.getElementById('selectedCountPill');
 const selectedCountHeader = document.getElementById('selectedCountHeader');
 const selectedList = document.getElementById('selectedList');
 const clearForm = document.getElementById('clearForm');
@@ -184,6 +174,13 @@ function updateLeftButtons(selectedIds) {
   });
 }
 
+function setPendingState(form, isPending) {
+  const button = form.querySelector('button');
+  if (!button) return;
+  button.disabled = isPending;
+  button.classList.toggle('is-pending', isPending);
+}
+
 function showToast(name, id) {
   const existing = document.getElementById('undoToast');
   if (existing) existing.remove();
@@ -204,7 +201,6 @@ function showToast(name, id) {
       .then((r) => r.json())
       .then((data) => {
         if (!data.ok) return;
-        selectedCountPill.textContent = `${data.selected_count} selected`;
         selectedCountHeader.textContent = data.selected_count;
         updateSelectedList(data.selected_ingredients || []);
         updateLeftButtons(data.selected_ids || []);
@@ -221,6 +217,8 @@ document.addEventListener('submit', (e) => {
   if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
   e.preventDefault();
 
+  setPendingState(form, true);
+
   const endpoint = form.id === 'clearForm' ? '/ingredients/clear-async' : '/ingredients/toggle-async';
   const body = new URLSearchParams(new FormData(form));
 
@@ -232,7 +230,6 @@ document.addEventListener('submit', (e) => {
     .then((r) => r.json())
     .then((data) => {
       if (!data.ok) return;
-      selectedCountPill.textContent = `${data.selected_count} selected`;
       selectedCountHeader.textContent = data.selected_count;
       updateSelectedList(data.selected_ingredients || []);
       updateLeftButtons(data.selected_ids || []);
@@ -242,7 +239,21 @@ document.addEventListener('submit', (e) => {
     })
     .catch(() => {
       form.submit();
+    })
+    .finally(() => {
+      setPendingState(form, false);
     });
+});
+
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('#ingredientPickerList .ingredient-row');
+  if (!row) return;
+
+  if (e.target.closest('button, input, a, form')) return;
+
+  const form = row.querySelector('.ingredient-toggle-form');
+  if (!form) return;
+  form.requestSubmit();
 });
 
 const toast = document.getElementById('undoToast');
@@ -259,7 +270,6 @@ if (toast) {
         .then((r) => r.json())
         .then((data) => {
           if (!data.ok) return;
-          selectedCountPill.textContent = `${data.selected_count} selected`;
           selectedCountHeader.textContent = data.selected_count;
           updateSelectedList(data.selected_ingredients || []);
           updateLeftButtons(data.selected_ids || []);
