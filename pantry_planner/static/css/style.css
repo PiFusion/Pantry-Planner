@@ -107,11 +107,6 @@ button { cursor: pointer; }
 }
 
 /* Ingredient picker redesign */
-.ingredients-header { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.ingredients-header h1 { margin-right: 0.5rem; }
-.ingredients-global-search { display: flex; align-items: center; gap: 0.5rem; min-width: 320px; flex: 1; max-width: 520px; }
-.selected-pill { display: inline-flex; align-items: center; justify-content: center; padding: 0.4rem 1rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border); font-weight: 600; }
-
 .ingredients-layout { display: grid; grid-template-columns: 1.75fr 1fr; gap: 1.25rem; align-items: start; }
 .panel-card { background: var(--warm-white); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
 .panel-title { font-family: 'Playfair Display', serif; font-size: 2rem; padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }

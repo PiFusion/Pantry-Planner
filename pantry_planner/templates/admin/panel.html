@@ -154,7 +154,7 @@
             {% for ing in ingredient_rows %}
               <li>
                 <span>{{ ing.name }}</span>
-                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});">
+                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});">
                   <input type="hidden" name="confirm_blacklist" value="yes">
                   <label class="switch">
                     <input type="checkbox" {% if ing.hidden %}checked{% endif %} onchange="this.form.requestSubmit()">
@@ -176,7 +176,7 @@
             {% for ing in blacklisted_ingredients %}
               <li>
                 <span>{{ ing.name }}</span>
-                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, 1);">
+                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, 1);">
                   <input type="hidden" name="confirm_blacklist" value="yes">
                   <label class="switch">
                     <input type="checkbox" checked onchange="this.form.requestSubmit()">
@@ -210,5 +210,19 @@ function confirmBlacklist(form, ingredient, isHidden) {
   const action = isHidden ? 'unblacklist' : 'blacklist';
   return confirm(`Are you sure you want to ${action} "${ingredient}"?`);
 }
+
+
+const adminScrollKey = 'admin-panel-scroll-y';
+const savedScroll = sessionStorage.getItem(adminScrollKey);
+if (savedScroll) {
+  window.scrollTo(0, Number(savedScroll));
+  sessionStorage.removeItem(adminScrollKey);
+}
+
+document.querySelectorAll('form.js-preserve-scroll').forEach((form) => {
+  form.addEventListener('submit', () => {
+    sessionStorage.setItem(adminScrollKey, String(window.scrollY));
+  });
+});
 </script>
 {% endblock %}
