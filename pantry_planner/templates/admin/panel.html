@@ -79,7 +79,7 @@
                         <summary>⋯</summary>
                         <div class="actions-dropdown">
                           <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
-                          <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this, {{ u.username|tojson }}, {{ u.role|tojson }});">
+                          <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this);" data-username="{{ u.username }}" data-role="{{ u.role }}">
                             <input type="hidden" name="confirm_delete" value="yes">
                             <input type="hidden" name="admin_confirm_username" value="">
                             <button type="submit" class="danger-link">Delete user</button>
@@ -154,7 +154,7 @@
             {% for ing in ingredient_rows %}
               <li>
                 <span>{{ ing.name }}</span>
-                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, {{ 1 if ing.hidden else 0 }});">
+                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this);" data-ingredient="{{ ing.name }}" data-hidden="{{ 1 if ing.hidden else 0 }}">
                   <input type="hidden" name="confirm_blacklist" value="yes">
                   <label class="switch">
                     <input type="checkbox" {% if ing.hidden %}checked{% endif %} onchange="this.form.requestSubmit()">
@@ -176,7 +176,7 @@
             {% for ing in blacklisted_ingredients %}
               <li>
                 <span>{{ ing.name }}</span>
-                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this, {{ ing.name|tojson }}, 1);">
+                <form method="post" action="/admin/ingredients/toggle-hidden/{{ ing.id }}" class="js-preserve-scroll" onsubmit="return confirmBlacklist(this);" data-ingredient="{{ ing.name }}" data-hidden="1">
                   <input type="hidden" name="confirm_blacklist" value="yes">
                   <label class="switch">
                     <input type="checkbox" checked onchange="this.form.requestSubmit()">
@@ -195,7 +195,10 @@
 </div>
 
 <script>
-function confirmDeleteUser(form, username, role) {
+function confirmDeleteUser(form) {
+  const username = form.dataset.username || "this user";
+  const role = form.dataset.role || "user";
+
   if (!confirm(`Delete user ${username}? This removes their pantry/bookmarks/grocery data.`)) {
     return false;
   }
@@ -206,7 +209,9 @@ function confirmDeleteUser(form, username, role) {
   return true;
 }
 
-function confirmBlacklist(form, ingredient, isHidden) {
+function confirmBlacklist(form) {
+  const ingredient = form.dataset.ingredient || "this ingredient";
+  const isHidden = Number(form.dataset.hidden || 0) === 1;
   const action = isHidden ? 'unblacklist' : 'blacklist';
   return confirm(`Are you sure you want to ${action} "${ingredient}"?`);
 }
