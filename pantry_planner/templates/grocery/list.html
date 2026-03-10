@@ -1,44 +1,82 @@
 {% extends "base.html" %}
+{% block title %}Grocery List — Pantry Planner{% endblock %}
+
 {% block content %}
-<div class="section">
-  <h2>Grocery List</h2>
+<div class="page grocery-page">
+  <section class="grocery-card">
+    <header class="grocery-card-head">
+      <h1>Grocery List</h1>
+    </header>
 
-  <form method="post" action="/grocery/add" class="row">
-    <label>Item <input name="item_name" required></label>
-    <label>Qty <input name="quantity" placeholder="e.g. 2 lbs"></label>
-    <label>Notes <input name="notes" placeholder="optional"></label>
-    <button type="submit">Add Item</button>
-  </form>
-
-  <p>
-    <a href="/grocery/print" target="_blank">Print-friendly view</a>
-  </p>
-
-  {% if not items %}
-    <p>No grocery items yet.</p>
-  {% else %}
-    <ul>
-      {% for item in items %}
-        <li>
-          <form method="post" action="/grocery/toggle/{{ item.id }}" style="display:inline;">
-            <button type="submit">{% if item.is_checked %}Uncheck{% else %}Check{% endif %}</button>
-          </form>
-          {% if item.is_checked %}<s>{% endif %}
-            {{ item.item_name }}
-            {% if item.quantity %} ({{ item.quantity }}){% endif %}
-            {% if item.notes %} - {{ item.notes }}{% endif %}
-          {% if item.is_checked %}</s>{% endif %}
-
-          <form method="post" action="/grocery/delete/{{ item.id }}" style="display:inline;" onsubmit="return confirm('Delete this grocery item?');">
-            <button type="submit">Delete</button>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
-
-    <form method="post" action="/grocery/clear" onsubmit="return confirm('Delete ALL grocery items?');">
-      <button type="submit">Delete All</button>
+    <form method="post" action="/grocery/add" class="grocery-add-grid">
+      <input name="item_name" class="form-control" placeholder="Item name" required>
+      <input name="quantity" class="form-control" placeholder="Qty   2 lbs">
+      <input name="notes" class="form-control" placeholder="brand/notes">
+      <button type="submit" class="btn btn-primary grocery-add-btn">Add</button>
     </form>
-  {% endif %}
+
+    <div class="grocery-toolbar">
+      <div class="grocery-stats">
+        <span>Total items: <strong>{{ total_count }}</strong></span>
+        <span>Checked off: <strong>{{ checked_count }}</strong></span>
+      </div>
+
+      <div class="grocery-actions">
+        <form method="post" action="/grocery/clear-checked" onsubmit="return confirm('Clear all checked items?');">
+          <button type="submit" class="btn btn-ghost btn-sm">Clear checked</button>
+        </form>
+        <form method="post" action="/grocery/clear" onsubmit="return confirm('Delete ALL grocery items?');">
+          <button type="submit" class="btn btn-ghost btn-sm btn-delete-all">Delete all</button>
+        </form>
+        <a class="btn btn-ghost btn-sm" href="/grocery/print" target="_blank">🖨 Print</a>
+      </div>
+    </div>
+
+    <section class="grocery-section">
+      <h2>To Buy ({{ to_buy|length }})</h2>
+      <ul class="grocery-row-list">
+        {% for item in to_buy %}
+          <li class="grocery-row-item">
+            <div class="grocery-main-cell">
+              <form method="post" action="/grocery/toggle/{{ item.id }}">
+                <button type="submit" class="check-btn" aria-label="Mark {{ item.item_name }} done"></button>
+              </form>
+              <span class="item-name">{{ item.item_name }}</span>
+              {% if item.quantity %}<span class="qty-chip">{{ item.quantity }}</span>{% endif %}
+              {% if item.notes %}<span class="item-note">{{ item.notes }}</span>{% endif %}
+            </div>
+            <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
+              <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="grocery-empty">No items to buy.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <details class="grocery-done" {% if checked %}open{% endif %}>
+      <summary>In Cart / Done ({{ checked|length }})</summary>
+      <ul class="grocery-row-list">
+        {% for item in checked %}
+          <li class="grocery-row-item is-done">
+            <div class="grocery-main-cell">
+              <form method="post" action="/grocery/toggle/{{ item.id }}">
+                <button type="submit" class="check-btn is-checked" aria-label="Uncheck {{ item.item_name }}">✓</button>
+              </form>
+              <span class="item-name">{{ item.item_name }}</span>
+              {% if item.quantity %}<span class="qty-chip">{{ item.quantity }}</span>{% endif %}
+              {% if item.notes %}<span class="item-note">{{ item.notes }}</span>{% endif %}
+            </div>
+            <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
+              <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="grocery-empty">No checked items yet.</li>
+        {% endfor %}
+      </ul>
+    </details>
+  </section>
 </div>
 {% endblock %}
