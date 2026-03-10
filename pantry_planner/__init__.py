@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import os
 
 from .db import close_db, init_db, get_db
@@ -88,6 +88,6 @@ def create_app():
 
     @app.get("/")
     def home():
-        return "<p>Pantry Planner is running. Go to <a href='/ingredients'>/ingredients</a></p>"
+        return render_template("home.html")
 
     return app
