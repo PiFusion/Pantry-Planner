@@ -1,9 +1,38 @@
 {% extends "base.html" %}
+{% block title %}Log in — Pantry Planner{% endblock %}
+
 {% block content %}
-<h2>Login</h2>
-<form method="post">
-  <label>Username <input name="username"></label><br/>
-  <label>Password <input name="password" type="password"></label><br/>
-  <button type="submit">Login</button>
-</form>
+<div class="auth-shell">
+  <section class="auth-card">
+    <h1>Log in</h1>
+    <p class="auth-subtitle">Welcome back! Please log in to your account.</p>
+
+    <form method="post" class="auth-form">
+      <div class="auth-field">
+        <label for="username">Username</label>
+        <div class="auth-input-wrap">
+          <span class="auth-icon">👤</span>
+          <input id="username" name="username" class="form-control" placeholder="Username" autocomplete="username" required>
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <div class="auth-input-wrap">
+          <span class="auth-icon">🔒</span>
+          <input id="password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password" required>
+        </div>
+      </div>
+
+      <div class="auth-help-row">
+        <span></span>
+        <span class="muted">Forgot password?</span>
+      </div>
+
+      <button type="submit" class="btn auth-submit">Log in</button>
+    </form>
+
+    <p class="auth-footer">Don't have an account? <a href="/auth/register">Sign up</a></p>
+  </section>
+</div>
 {% endblock %}

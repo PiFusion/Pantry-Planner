@@ -1,9 +1,33 @@
 {% extends "base.html" %}
+{% block title %}Sign up — Pantry Planner{% endblock %}
+
 {% block content %}
-<h2>Register</h2>
-<form method="post">
-  <label>Username <input name="username"></label><br/>
-  <label>Password <input name="password" type="password"></label><br/>
-  <button type="submit">Create account</button>
-</form>
+<div class="auth-shell">
+  <section class="auth-card">
+    <h1>Create account</h1>
+    <p class="auth-subtitle">Start building your pantry and discovering recipes.</p>
+
+    <form method="post" class="auth-form">
+      <div class="auth-field">
+        <label for="username">Username</label>
+        <div class="auth-input-wrap">
+          <span class="auth-icon">👤</span>
+          <input id="username" name="username" class="form-control" placeholder="Username" autocomplete="username" required>
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <div class="auth-input-wrap">
+          <span class="auth-icon">🔒</span>
+          <input id="password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="new-password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn auth-submit">Create account</button>
+    </form>
+
+    <p class="auth-footer">Already have an account? <a href="/auth/login">Log in</a></p>
+  </section>
+</div>
 {% endblock %}
