@@ -1,4 +1,5 @@
 from functools import wraps
+from datetime import datetime
 
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
@@ -30,7 +31,18 @@ def list_items():
         """,
         (g.user["id"],),
     ).fetchall()
-    return render_template("grocery/list.html", items=rows)
+
+    to_buy = [r for r in rows if not r["is_checked"]]
+    checked = [r for r in rows if r["is_checked"]]
+
+    return render_template(
+        "grocery/list.html",
+        items=rows,
+        to_buy=to_buy,
+        checked=checked,
+        total_count=len(rows),
+        checked_count=len(checked),
+    )
 
 
 @bp.post("/add")
@@ -55,8 +67,6 @@ def add_item():
     db.commit()
     flash("Added to grocery list.")
     return redirect(url_for("grocery.list_items"))
-
-
 
 
 @bp.post("/add-from-ingredients")
@@ -124,6 +134,19 @@ def clear_all():
     return redirect(url_for("grocery.list_items"))
 
 
+@bp.post("/clear-checked")
+@login_required
+def clear_checked():
+    db = get_db()
+    db.execute(
+        "DELETE FROM grocery_items WHERE user_id = ? AND is_checked = 1",
+        (g.user["id"],),
+    )
+    db.commit()
+    flash("Checked items removed.")
+    return redirect(url_for("grocery.list_items"))
+
+
 @bp.get("/print")
 @login_required
 def print_view():
@@ -136,4 +159,12 @@ def print_view():
         """,
         (g.user["id"],),
     ).fetchall()
-    return render_template("grocery/print.html", items=rows)
+
+    to_buy = [r for r in rows if not r["is_checked"]]
+
+    return render_template(
+        "grocery/print.html",
+        items=to_buy,
+        printed_at=datetime.now(),
+        total_count=len(to_buy),
+    )
