@@ -23,8 +23,8 @@
               >
               <span>{{ ing.name }}</span>
             </div>
-
-            <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+            <div class="ingredients-buttons">
+              <form method="post" action="/ingredients/toggle">
               <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
               <input type="hidden" name="return_q" value="{{ q }}">
               {% if ing.id in selected_ids %}
@@ -32,7 +32,16 @@
               {% else %}
                 <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}">+</button>
               {% endif %}
+              </form>
+              <form method="post" action="/grocery/add">
+              <input type="hidden" name="item_name" value="{{ ing.name }}">
+              {% if ing.id in selected_ids %}
+                <button type="submit" class="ingredient-action ingredient-gorcery-added">✓ Added</button>
+              {% else %}
+                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}" style="font-size: small;">+ Grocery List</button>
+              {% endif %}
             </form>
+            </div>
           </li>
         {% else %}
           <li class="ingredient-empty">No ingredients found.</li>

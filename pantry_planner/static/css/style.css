@@ -247,3 +247,5 @@ button { cursor: pointer; }
   .manage-pantry-grid,
   .sync-kpis { grid-template-columns: 1fr; }
 }
+
+.ingredients-buttons { align-content: end; }
