@@ -57,6 +57,33 @@ def add_item():
     return redirect(url_for("grocery.list_items"))
 
 
+
+
+@bp.post("/add-from-ingredients")
+@login_required
+def add_from_ingredients():
+    item_name = request.form.get("item_name", "").strip()
+    quantity = request.form.get("quantity", "").strip()
+    notes = request.form.get("notes", "").strip()
+    return_q = request.form.get("return_q", "").strip()
+
+    if not item_name:
+        flash("Ingredient name is required.")
+        return redirect(url_for("pantry.ingredients", q=return_q))
+
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
+        VALUES (?, ?, ?, ?)
+        """,
+        (g.user["id"], item_name, quantity or None, notes or None),
+    )
+    db.commit()
+    flash(f"Added {item_name} to grocery list.")
+    return redirect(url_for("pantry.ingredients", q=return_q))
+
+
 @bp.post("/toggle/<int:item_id>")
 @login_required
 def toggle_item(item_id):

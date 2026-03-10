@@ -24,23 +24,34 @@
               <span>{{ ing.name }}</span>
             </div>
             <div class="ingredients-buttons">
-              <form method="post" action="/ingredients/toggle">
-              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
-              <input type="hidden" name="return_q" value="{{ q }}">
-              {% if ing.id in selected_ids %}
-                <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
-              {% else %}
-                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}">+</button>
-              {% endif %}
+              <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+                <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+                <input type="hidden" name="return_q" value="{{ q }}">
+                {% if ing.id in selected_ids %}
+                  <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+                {% else %}
+                  <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}">+</button>
+                {% endif %}
               </form>
-              <form method="post" action="/grocery/add">
-              <input type="hidden" name="item_name" value="{{ ing.name }}">
-              {% if ing.id in selected_ids %}
-                <button type="submit" class="ingredient-action ingredient-gorcery-added">✓ Added</button>
-              {% else %}
-                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}" style="font-size: small;">+ Grocery List</button>
+
+              {% if g.user %}
+                <details class="grocery-inline">
+                  <summary class="ingredient-action grocery-summary">+ Grocery</summary>
+                  <form method="post" action="/grocery/add-from-ingredients" class="grocery-inline-form">
+                    <input type="hidden" name="item_name" value="{{ ing.name }}">
+                    <input type="hidden" name="return_q" value="{{ q }}">
+                    <label>
+                      Qty
+                      <input name="quantity" class="form-control" placeholder="e.g. 2 lbs">
+                    </label>
+                    <label>
+                      Notes
+                      <input name="notes" class="form-control" placeholder="optional">
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                  </form>
+                </details>
               {% endif %}
-            </form>
             </div>
           </li>
         {% else %}
@@ -164,7 +175,7 @@ function updateSelectedList(items) {
 function updateLeftButtons(selectedIds) {
   ingredientRows.forEach((row) => {
     const ingId = Number(row.dataset.id);
-    const form = row.querySelector('form');
+    const form = row.querySelector('.ingredient-toggle-form');
     if (!form) return;
     if (selectedIds.includes(ingId)) {
       form.innerHTML = `
@@ -258,7 +269,7 @@ document.addEventListener('click', (e) => {
   const row = e.target.closest('#ingredientPickerList .ingredient-row');
   if (!row) return;
 
-  if (e.target.closest('button, input, a, form')) return;
+  if (e.target.closest('button, input, a, form, details, summary')) return;
 
   const form = row.querySelector('.ingredient-toggle-form');
   if (!form) return;

@@ -130,6 +130,35 @@ class PantryPlannerTestCase(unittest.TestCase):
             ).fetchone()
             self.assertIsNone(item)
 
+    def test_add_from_ingredients_stays_on_ingredients_page(self):
+        uid = self._create_user()
+        self._login()
+
+        r = self.client.post(
+            "/grocery/add-from-ingredients",
+            data={
+                "item_name": "Tomato",
+                "quantity": "3",
+                "notes": "roma",
+                "return_q": "tom",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/ingredients?q=tom", r.headers["Location"])
+
+        with self.app.app_context():
+            db = get_db()
+            item = db.execute(
+                "SELECT item_name, quantity, notes FROM grocery_items WHERE user_id = ?",
+                (uid,),
+            ).fetchone()
+            self.assertIsNotNone(item)
+            self.assertEqual(item["item_name"], "Tomato")
+            self.assertEqual(item["quantity"], "3")
+            self.assertEqual(item["notes"], "roma")
+
 
 if __name__ == "__main__":
     unittest.main()
