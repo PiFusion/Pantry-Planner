@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Pantry Planner{% endblock %}
+
+{% block content %}
+<main class="landing-page">
+  <section class="landing-hero">
+    <div class="landing-copy">
+      <h1>Easily manage your pantry and find delicious recipes.</h1>
+      <p>
+        Keep track of your ingredients, discover meal ideas based on what you already have,
+        and simplify every grocery trip.
+      </p>
+      <div class="landing-cta-row">
+        {% if g.user %}
+          <a class="btn btn-primary landing-cta" href="/ingredients">Go to Pantry</a>
+        {% else %}
+          <a class="btn btn-primary landing-cta" href="/auth/register">Get Started</a>
+          <a class="btn btn-ghost landing-cta-secondary" href="/auth/login">Log in</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="landing-visual" aria-hidden="true">
+      <div class="produce produce-1">🥑</div>
+      <div class="produce produce-2">🍅</div>
+      <div class="produce produce-3">🧀</div>
+      <div class="produce produce-4">🥕</div>
+      <div class="produce produce-5">🍎</div>
+      <div class="cutting-board"></div>
+    </div>
+  </section>
+</main>
+{% endblock %}
