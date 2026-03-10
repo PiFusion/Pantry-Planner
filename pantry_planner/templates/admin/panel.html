@@ -7,10 +7,10 @@
     <aside class="admin-sidebar-card">
       <h2>Admin Panel</h2>
       <nav class="admin-sidebar-nav" aria-label="Admin navigation">
-        <a href="#overview">Overview</a>
-        <a href="#mealdb-sync" class="active">MealDB Sync</a>
-        <a href="#users">Users</a>
-        <a href="#ingredient-moderation">Ingredient Moderation</a>
+        <a href="#overview" data-section="overview">Overview</a>
+        <a href="#mealdb-sync" data-section="mealdb-sync">MealDB Sync</a>
+        <a href="#users" data-section="users">Users</a>
+        <a href="#ingredient-moderation" data-section="ingredient-moderation">Ingredient Moderation</a>
       </nav>
     </aside>
 
@@ -140,8 +140,8 @@
         </section>
       {% endif %}
 
-      <section class="admin-moderation-grid" id="ingredient-moderation">
-        <section class="admin-card">
+      <section class="admin-moderation-grid">
+        <section class="admin-card" id="ingredient-moderation">
           <div class="admin-card-head split">
             <h3>Ingredient Moderation</h3>
             <form method="get" action="/admin/" class="admin-search-row compact">
@@ -228,6 +228,53 @@ document.querySelectorAll('form.js-preserve-scroll').forEach((form) => {
   form.addEventListener('submit', () => {
     sessionStorage.setItem(adminScrollKey, String(window.scrollY));
   });
+});
+
+
+const sectionIds = ['overview', 'mealdb-sync', 'users', 'ingredient-moderation'];
+const sidebarLinks = Array.from(document.querySelectorAll('.admin-sidebar-nav a[data-section]'));
+
+function setActiveLink(activeId) {
+  sidebarLinks.forEach((link) => {
+    link.classList.toggle('active', link.dataset.section === activeId);
+  });
+}
+
+function updateActiveByScroll() {
+  const marker = window.scrollY + 120;
+  let activeId = sectionIds[0];
+
+  sectionIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.offsetTop <= marker) activeId = id;
+  });
+
+  setActiveLink(activeId);
+}
+
+sidebarLinks.forEach((link) => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const sectionId = link.dataset.section;
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    history.replaceState(null, '', `#${sectionId}`);
+    setActiveLink(sectionId);
+  });
+});
+
+window.addEventListener('scroll', updateActiveByScroll, { passive: true });
+window.addEventListener('load', () => {
+  const hashId = (window.location.hash || '').replace('#', '');
+  if (sectionIds.includes(hashId)) {
+    const target = document.getElementById(hashId);
+    if (target) target.scrollIntoView({ block: 'start' });
+    setActiveLink(hashId);
+  } else {
+    updateActiveByScroll();
+  }
 });
 </script>
 {% endblock %}
