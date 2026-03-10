@@ -189,6 +189,43 @@ class PantryPlannerTestCase(unittest.TestCase):
             self.assertEqual(rows[0]['item_name'], 'Todo item')
             self.assertEqual(rows[0]['is_checked'], 0)
 
+    def test_grocery_page_shows_mealdb_ingredients_section(self):
+        self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES ('Bacon', 0)")
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES ('Milk', 0)")
+            db.commit()
+
+        r = self.client.get('/grocery/?ingredient_q=ba')
+        text = r.get_data(as_text=True)
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('From ingredients', text)
+        self.assertIn('Bacon', text)
+        self.assertNotIn('Milk', text)
+
+    def test_grocery_print_view_renders_without_platform_specific_strftime(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT INTO grocery_items (user_id, item_name, quantity, notes) VALUES (?, ?, ?, ?)",
+                (uid, 'Chicken', '2', 'sale'),
+            )
+            db.commit()
+
+        r = self.client.get('/grocery/print')
+        text = r.get_data(as_text=True)
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('Printed:', text)
+        self.assertIn('Chicken', text)
+
 
 if __name__ == "__main__":
     unittest.main()
