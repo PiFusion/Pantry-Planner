@@ -8,12 +8,41 @@
       <h1>Grocery List</h1>
     </header>
 
-    <form method="post" action="/grocery/add" class="grocery-add-grid">
-      <input name="item_name" class="form-control" placeholder="Item name" required>
-      <input name="quantity" class="form-control" placeholder="Qty   2 lbs">
-      <input name="notes" class="form-control" placeholder="brand/notes">
-      <button type="submit" class="btn btn-primary grocery-add-btn">Add</button>
-    </form>
+    <div class="grocery-entry-sections">
+      <section class="grocery-entry-card">
+        <h2>Manual entry</h2>
+        <form method="post" action="/grocery/add" class="grocery-add-grid">
+          <input name="item_name" class="form-control" placeholder="Item name" required>
+          <input name="quantity" class="form-control" placeholder="Qty   2 lbs">
+          <input name="notes" class="form-control" placeholder="brand/notes">
+          <button type="submit" class="btn btn-primary grocery-add-btn">Add</button>
+        </form>
+      </section>
+
+      <section class="grocery-entry-card">
+        <h2>From ingredients</h2>
+        <form method="get" action="/grocery/" class="grocery-ingredient-search">
+          <input
+            name="ingredient_q"
+            value="{{ ingredient_q }}"
+            class="form-control"
+            placeholder="Search MealDB ingredients..."
+          >
+          <button type="submit" class="btn btn-ghost">Search</button>
+        </form>
+
+        <div class="grocery-ingredient-chips">
+          {% for ingredient in ingredient_suggestions %}
+            <form method="post" action="/grocery/add" class="chip-form">
+              <input type="hidden" name="item_name" value="{{ ingredient }}">
+              <button type="submit" class="ingredient-chip">{{ ingredient }}</button>
+            </form>
+          {% else %}
+            <p class="grocery-empty">No ingredient matches found.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
 
     <div class="grocery-toolbar">
       <div class="grocery-stats">
