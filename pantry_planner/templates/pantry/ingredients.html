@@ -35,7 +35,11 @@
               </form>
               <form method="post" action="/grocery/add">
               <input type="hidden" name="item_name" value="{{ ing.name }}">
-              <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}" style="font-size: small;">+ Grocery List</button>
+              {% if ing.id in selected_ids %}
+                <button type="submit" class="ingredient-action ingredient-gorcery-added">✓ Added</button>
+              {% else %}
+                <button type="submit" class="ingredient-action" aria-label="Add {{ ing.name }}" style="font-size: small;">+ Grocery List</button>
+              {% endif %}
             </form>
             </div>
           </li>
