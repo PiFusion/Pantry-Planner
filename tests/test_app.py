@@ -226,6 +226,36 @@ class PantryPlannerTestCase(unittest.TestCase):
         self.assertIn('Printed:', text)
         self.assertIn('Chicken', text)
 
+    def test_toggle_ingredient_async_returns_lightweight_payload(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES (?, 0)", ("Onion",))
+            ing_id = db.execute("SELECT id FROM ingredients WHERE name = ?", ("Onion",)).fetchone()["id"]
+            db.commit()
+
+        r = self.client.post('/ingredients/toggle-async', data={"ingredient_id": ing_id, "return_q": ""})
+        payload = r.get_json()
+
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["action"], "added")
+        self.assertEqual(payload["ingredient_id"], ing_id)
+        self.assertEqual(payload["ingredient_name"], "Onion")
+        self.assertEqual(payload["selected_count"], 1)
+        self.assertNotIn("selected_ids", payload)
+        self.assertNotIn("selected_ingredients", payload)
+
+        with self.app.app_context():
+            db = get_db()
+            row = db.execute(
+                "SELECT 1 FROM pantry_items WHERE user_id = ? AND ingredient_id = ?",
+                (uid, ing_id),
+            ).fetchone()
+            self.assertIsNotNone(row)
+
 
 if __name__ == "__main__":
     unittest.main()
