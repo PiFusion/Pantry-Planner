@@ -189,6 +189,104 @@ class PantryPlannerTestCase(unittest.TestCase):
             self.assertEqual(rows[0]['item_name'], 'Todo item')
             self.assertEqual(rows[0]['is_checked'], 0)
 
+    def test_grocery_page_shows_mealdb_ingredients_section(self):
+        self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES ('Bacon', 0)")
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES ('Milk', 0)")
+            db.commit()
+
+        r = self.client.get('/grocery/?ingredient_q=ba')
+        text = r.get_data(as_text=True)
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('From ingredients', text)
+        self.assertIn('Bacon', text)
+        self.assertNotIn('Milk', text)
+
+    def test_grocery_print_view_renders_without_platform_specific_strftime(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT INTO grocery_items (user_id, item_name, quantity, notes) VALUES (?, ?, ?, ?)",
+                (uid, 'Chicken', '2', 'sale'),
+            )
+            db.commit()
+
+        r = self.client.get('/grocery/print')
+        text = r.get_data(as_text=True)
+
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('Printed:', text)
+        self.assertIn('Chicken', text)
+
+    def test_toggle_ingredient_async_returns_lightweight_payload(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES (?, 0)", ("Onion",))
+            ing_id = db.execute("SELECT id FROM ingredients WHERE name = ?", ("Onion",)).fetchone()["id"]
+            db.commit()
+
+        r = self.client.post('/ingredients/toggle-async', data={"ingredient_id": ing_id, "return_q": ""})
+        payload = r.get_json()
+
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["action"], "added")
+        self.assertEqual(payload["ingredient_id"], ing_id)
+        self.assertEqual(payload["ingredient_name"], "Onion")
+        self.assertEqual(payload["selected_count"], 1)
+        self.assertNotIn("selected_ids", payload)
+        self.assertNotIn("selected_ingredients", payload)
+
+        with self.app.app_context():
+            db = get_db()
+            row = db.execute(
+                "SELECT 1 FROM pantry_items WHERE user_id = ? AND ingredient_id = ?",
+                (uid, ing_id),
+            ).fetchone()
+            self.assertIsNotNone(row)
+
+    def test_add_from_ingredients_async_supports_quantity_unit_and_notes(self):
+        uid = self._create_user()
+        self._login()
+
+        r = self.client.post(
+            '/grocery/add-from-ingredients-async',
+            data={
+                'item_name': 'Tomato',
+                'quantity': '2',
+                'unit': 'lb',
+                'notes': 'roma',
+                'return_q': 'tom',
+            },
+        )
+        payload = r.get_json()
+
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['item_name'], 'Tomato')
+
+        with self.app.app_context():
+            db = get_db()
+            item = db.execute(
+                "SELECT item_name, quantity, notes FROM grocery_items WHERE user_id = ?",
+                (uid,),
+            ).fetchone()
+            self.assertIsNotNone(item)
+            self.assertEqual(item['item_name'], 'Tomato')
+            self.assertEqual(item['quantity'], '2 lb')
+            self.assertEqual(item['notes'], 'roma')
+
 
 if __name__ == "__main__":
     unittest.main()

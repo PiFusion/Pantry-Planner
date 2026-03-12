@@ -35,22 +35,7 @@
               </form>
 
               {% if g.user %}
-                <details class="grocery-inline">
-                  <summary class="ingredient-action grocery-summary">+ Grocery</summary>
-                  <form method="post" action="/grocery/add-from-ingredients" class="grocery-inline-form">
-                    <input type="hidden" name="item_name" value="{{ ing.name }}">
-                    <input type="hidden" name="return_q" value="{{ q }}">
-                    <label>
-                      Qty
-                      <input name="quantity" class="form-control" placeholder="e.g. 2 lbs">
-                    </label>
-                    <label>
-                      Notes
-                      <input name="notes" class="form-control" placeholder="optional">
-                    </label>
-                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
-                  </form>
-                </details>
+                <button type="button" class="ingredient-action grocery-popover-trigger" data-ingredient-id="{{ ing.id }}" data-ingredient-name="{{ ing.name }}">+ Grocery</button>
               {% endif %}
             </div>
           </li>
@@ -105,6 +90,44 @@
     </aside>
   </div>
 
+  <div id="groceryPopover" class="grocery-popover hidden" role="dialog" aria-label="Add to grocery list">
+    <div class="grocery-popover-title">Add to grocery list</div>
+    <div class="grocery-popover-name" id="groceryPopoverIngredientName"></div>
+    <form id="groceryPopoverForm" class="grocery-popover-form">
+      <input type="hidden" name="item_name" id="groceryPopoverItemName">
+      <input type="hidden" name="return_q" value="{{ q }}">
+
+      <label>
+        Qty
+        <div class="grocery-popover-qty-row">
+          <input name="quantity" class="form-control" placeholder="1">
+          <select name="unit" class="form-control">
+            <option value="">unit</option>
+            <option value="lb">lb</option>
+            <option value="oz">oz</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="ct">ct</option>
+            <option value="cup">cup</option>
+            <option value="tbsp">tbsp</option>
+            <option value="tsp">tsp</option>
+            <option value="bag">bag</option>
+          </select>
+        </div>
+      </label>
+
+      <label>
+        Notes
+        <input name="notes" class="form-control" placeholder="optional">
+      </label>
+
+      <div class="grocery-popover-actions">
+        <button type="button" class="btn btn-ghost" id="groceryPopoverCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+
   {% if last_action == 'added' and last_name and last_ingredient_id %}
     <div class="toast" id="undoToast" data-id="{{ last_ingredient_id }}" data-name="{{ last_name }}">
       <span>✓ Added {{ last_name }}</span>
@@ -118,87 +141,186 @@ const localSearch = document.getElementById('ingredientLocalSearch');
 const selectedCountHeader = document.getElementById('selectedCountHeader');
 const selectedList = document.getElementById('selectedList');
 const clearForm = document.getElementById('clearForm');
-const ingredientRows = document.querySelectorAll('#ingredientPickerList .ingredient-row');
 const returnQ = {{ q|tojson }};
 
-if (localSearch) {
-  localSearch.addEventListener('input', () => {
-    const q = localSearch.value.trim().toLowerCase();
-    document.querySelectorAll('#ingredientPickerList .ingredient-row').forEach((row) => {
-      row.style.display = row.dataset.name.includes(q) ? '' : 'none';
-    });
-  });
-}
+const leftRows = Array.from(document.querySelectorAll('#ingredientPickerList .ingredient-row'));
+const leftRowById = new Map(leftRows.map((row) => [Number(row.dataset.id), row]));
+
+const groceryPopover = document.getElementById('groceryPopover');
+const groceryPopoverForm = document.getElementById('groceryPopoverForm');
+const groceryPopoverName = document.getElementById('groceryPopoverIngredientName');
+const groceryPopoverItemName = document.getElementById('groceryPopoverItemName');
+const groceryPopoverCancel = document.getElementById('groceryPopoverCancel');
+let activePopoverTrigger = null;
 
 function buildThumb(name) {
   return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
 }
 
-function updateSelectedList(items) {
-  if (!selectedList) return;
-  selectedList.innerHTML = '';
+if (localSearch) {
+  localSearch.addEventListener('input', () => {
+    const q = localSearch.value.trim().toLowerCase();
+    leftRows.forEach((row) => {
+      row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+}
 
-  if (!items.length) {
-    const empty = document.createElement('li');
-    empty.className = 'ingredient-empty';
-    empty.id = 'selectedEmpty';
-    empty.textContent = 'No selected ingredients yet.';
-    selectedList.appendChild(empty);
-    clearForm.classList.add('hidden');
+function selectedRowMarkup(id, name) {
+  return `
+    <div class="ingredient-main">
+      <img class="ingredient-thumb" src="${buildThumb(name)}" alt="${name}" loading="lazy">
+      <span>${name}</span>
+    </div>
+    <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+      <input type="hidden" name="ingredient_id" value="${id}">
+      <input type="hidden" name="return_q" value="${returnQ}">
+      <button type="submit" class="ingredient-remove" aria-label="Remove ${name}">×</button>
+    </form>
+  `;
+}
+
+function ensureSelectedEmptyState() {
+  if (!selectedList) return;
+  if (selectedList.querySelector('.ingredient-row')) return;
+
+  selectedList.innerHTML = '';
+  const empty = document.createElement('li');
+  empty.className = 'ingredient-empty';
+  empty.id = 'selectedEmpty';
+  empty.textContent = 'No selected ingredients yet.';
+  selectedList.appendChild(empty);
+}
+
+function addSelectedIngredient(id, name) {
+  if (!selectedList) return;
+  const existing = selectedList.querySelector(`.ingredient-row[data-id="${id}"]`);
+  if (existing) return;
+
+  const empty = document.getElementById('selectedEmpty');
+  if (empty) empty.remove();
+
+  const li = document.createElement('li');
+  li.className = 'ingredient-row';
+  li.dataset.id = String(id);
+  li.dataset.name = name.toLowerCase();
+  li.innerHTML = selectedRowMarkup(id, name);
+
+  const img = li.querySelector('img');
+  img.onerror = () => { img.src = 'https://www.themealdb.com/images/ingredients/Chicken-Small.png'; };
+
+  selectedList.appendChild(li);
+}
+
+function removeSelectedIngredient(id) {
+  if (!selectedList) return;
+  const row = selectedList.querySelector(`.ingredient-row[data-id="${id}"]`);
+  if (row) row.remove();
+  ensureSelectedEmptyState();
+}
+
+function setClearFormVisibility(visible) {
+  if (!clearForm) return;
+  clearForm.classList.toggle('hidden', !visible);
+}
+
+function setLeftButtonState(ingredientId, isAdded, ingredientName) {
+  const row = leftRowById.get(Number(ingredientId));
+  if (!row) return;
+
+  const form = row.querySelector('.ingredient-toggle-form');
+  if (!form) return;
+
+  if (isAdded) {
+    form.innerHTML = `
+      <input type="hidden" name="ingredient_id" value="${ingredientId}">
+      <input type="hidden" name="return_q" value="${returnQ}">
+      <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+    `;
     return;
   }
 
-  clearForm.classList.remove('hidden');
-  items.forEach((ing) => {
-    const li = document.createElement('li');
-    li.className = 'ingredient-row';
-    li.dataset.id = ing.id;
-
-    li.innerHTML = `
-      <div class="ingredient-main">
-        <img class="ingredient-thumb" src="${buildThumb(ing.name)}" alt="${ing.name}" loading="lazy">
-        <span>${ing.name}</span>
-      </div>
-      <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-        <input type="hidden" name="ingredient_id" value="${ing.id}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-remove" aria-label="Remove ${ing.name}">×</button>
-      </form>
-    `;
-
-    const img = li.querySelector('img');
-    img.onerror = () => { img.src = 'https://www.themealdb.com/images/ingredients/Chicken-Small.png'; };
-    selectedList.appendChild(li);
-  });
+  const name = ingredientName || row.dataset.ingredientName || 'ingredient';
+  form.innerHTML = `
+    <input type="hidden" name="ingredient_id" value="${ingredientId}">
+    <input type="hidden" name="return_q" value="${returnQ}">
+    <button type="submit" class="ingredient-action" aria-label="Add ${name}">+</button>
+  `;
 }
 
-function updateLeftButtons(selectedIds) {
-  ingredientRows.forEach((row) => {
-    const ingId = Number(row.dataset.id);
-    const form = row.querySelector('.ingredient-toggle-form');
-    if (!form) return;
-    if (selectedIds.includes(ingId)) {
-      form.innerHTML = `
-        <input type="hidden" name="ingredient_id" value="${ingId}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
-      `;
-    } else {
-      const name = row.dataset.ingredientName || 'ingredient';
-      form.innerHTML = `
-        <input type="hidden" name="ingredient_id" value="${ingId}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-action" aria-label="Add ${name}">+</button>
-      `;
-    }
-  });
+function closeGroceryPopover() {
+  if (!groceryPopover) return;
+  groceryPopover.classList.add('hidden');
+  groceryPopoverForm.reset();
+  activePopoverTrigger = null;
+}
+
+function openGroceryPopover(trigger) {
+  if (!groceryPopover || !trigger) return;
+  activePopoverTrigger = trigger;
+
+  const ingredientName = trigger.dataset.ingredientName || '';
+  groceryPopoverName.textContent = ingredientName;
+  groceryPopoverItemName.value = ingredientName;
+
+  const rect = trigger.getBoundingClientRect();
+  const top = window.scrollY + rect.bottom + 10;
+  const left = Math.max(16, window.scrollX + rect.left - 120);
+
+  groceryPopover.style.top = `${top}px`;
+  groceryPopover.style.left = `${left}px`;
+  groceryPopover.classList.remove('hidden');
 }
 
 function setPendingState(form, isPending) {
-  const button = form.querySelector('button');
+  const button = form.querySelector('button[type="submit"]') || form.querySelector('button');
   if (!button) return;
   button.disabled = isPending;
   button.classList.toggle('is-pending', isPending);
+}
+
+function showToastMessage(message) {
+  const existing = document.getElementById('undoToast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span>${message}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('hide'), 2400);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function applyToggleResponse(data, { suppressToast = false } = {}) {
+  if (!data || !data.ok) return;
+
+  selectedCountHeader.textContent = data.selected_count;
+  setClearFormVisibility(data.selected_count > 0);
+
+  if (data.action === 'added') {
+    addSelectedIngredient(data.ingredient_id, data.ingredient_name);
+    setLeftButtonState(data.ingredient_id, true, data.ingredient_name);
+    if (!suppressToast) {
+      showToast(data.ingredient_name, data.ingredient_id);
+    }
+  }
+
+  if (data.action === 'removed') {
+    removeSelectedIngredient(data.ingredient_id);
+    setLeftButtonState(data.ingredient_id, false, data.ingredient_name);
+  }
+}
+
+function applyClearResponse(data) {
+  if (!data || !data.ok) return;
+  selectedCountHeader.textContent = data.selected_count;
+  selectedList.querySelectorAll('.ingredient-row').forEach((row) => row.remove());
+  ensureSelectedEmptyState();
+  setClearFormVisibility(false);
+
+  leftRows.forEach((row) => {
+    setLeftButtonState(Number(row.dataset.id), false, row.dataset.ingredientName);
+  });
 }
 
 function showToast(name, id) {
@@ -219,12 +341,7 @@ function showToast(name, id) {
       body,
     })
       .then((r) => r.json())
-      .then((data) => {
-        if (!data.ok) return;
-        selectedCountHeader.textContent = data.selected_count;
-        updateSelectedList(data.selected_ingredients || []);
-        updateLeftButtons(data.selected_ids || []);
-      })
+      .then((data) => applyToggleResponse(data, { suppressToast: true }))
       .finally(() => toast.remove());
   });
 
@@ -234,9 +351,36 @@ function showToast(name, id) {
 
 document.addEventListener('submit', (e) => {
   const form = e.target;
-  if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
-  e.preventDefault();
 
+  if (form.id === 'groceryPopoverForm') {
+    e.preventDefault();
+    setPendingState(form, true);
+
+    const body = new URLSearchParams(new FormData(form));
+    fetch('/grocery/add-from-ingredients-async', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body,
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.ok) return;
+        closeGroceryPopover();
+        showToastMessage(`✓ Added ${data.item_name} to grocery list`);
+      })
+      .catch(() => {
+        form.method = 'post';
+        form.action = '/grocery/add-from-ingredients';
+        form.submit();
+      })
+      .finally(() => setPendingState(form, false));
+
+    return;
+  }
+
+  if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
+
+  e.preventDefault();
   setPendingState(form, true);
 
   const endpoint = form.id === 'clearForm' ? '/ingredients/clear-async' : '/ingredients/toggle-async';
@@ -249,12 +393,10 @@ document.addEventListener('submit', (e) => {
   })
     .then((r) => r.json())
     .then((data) => {
-      if (!data.ok) return;
-      selectedCountHeader.textContent = data.selected_count;
-      updateSelectedList(data.selected_ingredients || []);
-      updateLeftButtons(data.selected_ids || []);
-      if (data.action === 'added') {
-        showToast(data.ingredient_name, data.ingredient_id);
+      if (form.id === 'clearForm') {
+        applyClearResponse(data);
+      } else {
+        applyToggleResponse(data);
       }
     })
     .catch(() => {
@@ -266,14 +408,43 @@ document.addEventListener('submit', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  const trigger = e.target.closest('.grocery-popover-trigger');
+  if (trigger) {
+    e.preventDefault();
+    if (!groceryPopover.classList.contains('hidden') && activePopoverTrigger === trigger) {
+      closeGroceryPopover();
+      return;
+    }
+    openGroceryPopover(trigger);
+    return;
+  }
+
+  if (e.target.id === 'groceryPopoverCancel') {
+    closeGroceryPopover();
+    return;
+  }
+
+  if (!e.target.closest('#groceryPopover') && !e.target.closest('.grocery-popover-trigger')) {
+    closeGroceryPopover();
+  }
+
   const row = e.target.closest('#ingredientPickerList .ingredient-row');
   if (!row) return;
-
-  if (e.target.closest('button, input, a, form, details, summary')) return;
+  if (e.target.closest('button, input, select, a, form')) return;
 
   const form = row.querySelector('.ingredient-toggle-form');
   if (!form) return;
   form.requestSubmit();
+});
+
+window.addEventListener('scroll', () => {
+  if (!groceryPopover || groceryPopover.classList.contains('hidden') || !activePopoverTrigger) return;
+  openGroceryPopover(activePopoverTrigger);
+}, { passive: true });
+
+window.addEventListener('resize', () => {
+  if (!groceryPopover || groceryPopover.classList.contains('hidden') || !activePopoverTrigger) return;
+  openGroceryPopover(activePopoverTrigger);
 });
 
 const toast = document.getElementById('undoToast');
@@ -288,12 +459,7 @@ if (toast) {
         body,
       })
         .then((r) => r.json())
-        .then((data) => {
-          if (!data.ok) return;
-          selectedCountHeader.textContent = data.selected_count;
-          updateSelectedList(data.selected_ingredients || []);
-          updateLeftButtons(data.selected_ids || []);
-        })
+        .then((data) => applyToggleResponse(data, { suppressToast: true }))
         .finally(() => toast.remove());
     });
   }

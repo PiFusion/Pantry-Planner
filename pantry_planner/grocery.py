@@ -1,7 +1,7 @@
 from functools import wraps
 from datetime import datetime
 
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
 
 from .db import get_db
 
@@ -19,9 +19,43 @@ def login_required(view):
     return wrapped
 
 
+def _normalized_quantity(quantity: str, unit: str):
+    qty = quantity.strip()
+    unit_value = unit.strip()
+    if qty and unit_value:
+        return f"{qty} {unit_value}"
+    return qty or None
+
+
+def _insert_item_for_user(item_name: str, quantity: str | None, notes: str | None):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
+        VALUES (?, ?, ?, ?)
+        """,
+        (g.user["id"], item_name, quantity or None, notes or None),
+    )
+    db.commit()
+
+
 @bp.get("/")
 @login_required
 def list_items():
+    ingredient_q = request.args.get("ingredient_q", "").strip().lower()
+    ingredient_rows = get_db().execute(
+        """
+        SELECT name
+        FROM ingredients
+        WHERE hidden = 0
+        ORDER BY name ASC
+        """
+    ).fetchall()
+    all_ingredients = [r["name"] for r in ingredient_rows]
+    ingredient_suggestions = all_ingredients
+    if ingredient_q:
+        ingredient_suggestions = [n for n in all_ingredients if ingredient_q in n.lower()]
+
     rows = get_db().execute(
         """
         SELECT id, item_name, quantity, notes, is_checked, created_at
@@ -42,6 +76,8 @@ def list_items():
         checked=checked,
         total_count=len(rows),
         checked_count=len(checked),
+        ingredient_q=ingredient_q,
+        ingredient_suggestions=ingredient_suggestions[:30],
     )
 
 
@@ -56,15 +92,7 @@ def add_item():
         flash("Item name is required.")
         return redirect(url_for("grocery.list_items"))
 
-    db = get_db()
-    db.execute(
-        """
-        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
-        VALUES (?, ?, ?, ?)
-        """,
-        (g.user["id"], item_name, quantity or None, notes or None),
-    )
-    db.commit()
+    _insert_item_for_user(item_name, quantity, notes)
     flash("Added to grocery list.")
     return redirect(url_for("grocery.list_items"))
 
@@ -73,7 +101,10 @@ def add_item():
 @login_required
 def add_from_ingredients():
     item_name = request.form.get("item_name", "").strip()
-    quantity = request.form.get("quantity", "").strip()
+    quantity = _normalized_quantity(
+        request.form.get("quantity", ""),
+        request.form.get("unit", ""),
+    )
     notes = request.form.get("notes", "").strip()
     return_q = request.form.get("return_q", "").strip()
 
@@ -81,17 +112,26 @@ def add_from_ingredients():
         flash("Ingredient name is required.")
         return redirect(url_for("pantry.ingredients", q=return_q))
 
-    db = get_db()
-    db.execute(
-        """
-        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
-        VALUES (?, ?, ?, ?)
-        """,
-        (g.user["id"], item_name, quantity or None, notes or None),
-    )
-    db.commit()
+    _insert_item_for_user(item_name, quantity, notes)
     flash(f"Added {item_name} to grocery list.")
     return redirect(url_for("pantry.ingredients", q=return_q))
+
+
+@bp.post("/add-from-ingredients-async")
+@login_required
+def add_from_ingredients_async():
+    item_name = request.form.get("item_name", "").strip()
+    quantity = _normalized_quantity(
+        request.form.get("quantity", ""),
+        request.form.get("unit", ""),
+    )
+    notes = request.form.get("notes", "").strip()
+
+    if not item_name:
+        return jsonify({"ok": False, "error": "Ingredient name is required."}), 400
+
+    _insert_item_for_user(item_name, quantity, notes)
+    return jsonify({"ok": True, "item_name": item_name})
 
 
 @bp.post("/toggle/<int:item_id>")
@@ -165,6 +205,6 @@ def print_view():
     return render_template(
         "grocery/print.html",
         items=to_buy,
-        printed_at=datetime.now(),
+        printed_at=datetime.now().strftime("%b %d, %Y %I:%M %p").replace(" 0", " "),
         total_count=len(to_buy),
     )
