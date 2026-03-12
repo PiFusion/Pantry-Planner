@@ -256,6 +256,37 @@ class PantryPlannerTestCase(unittest.TestCase):
             ).fetchone()
             self.assertIsNotNone(row)
 
+    def test_add_from_ingredients_async_supports_quantity_unit_and_notes(self):
+        uid = self._create_user()
+        self._login()
+
+        r = self.client.post(
+            '/grocery/add-from-ingredients-async',
+            data={
+                'item_name': 'Tomato',
+                'quantity': '2',
+                'unit': 'lb',
+                'notes': 'roma',
+                'return_q': 'tom',
+            },
+        )
+        payload = r.get_json()
+
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['item_name'], 'Tomato')
+
+        with self.app.app_context():
+            db = get_db()
+            item = db.execute(
+                "SELECT item_name, quantity, notes FROM grocery_items WHERE user_id = ?",
+                (uid,),
+            ).fetchone()
+            self.assertIsNotNone(item)
+            self.assertEqual(item['item_name'], 'Tomato')
+            self.assertEqual(item['quantity'], '2 lb')
+            self.assertEqual(item['notes'], 'roma')
+
 
 if __name__ == "__main__":
     unittest.main()
