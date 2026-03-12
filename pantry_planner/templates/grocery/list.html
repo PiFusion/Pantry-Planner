@@ -35,13 +35,30 @@
       </form>
     </section>
 
-    <div class="grocery-toolbar">
-      <div class="grocery-stats">
-        <span>Total items: <strong>{{ total_count }}</strong></span>
-        <span>Checked off: <strong>{{ checked_count }}</strong></span>
-      </div>
+      <details class="grocery-done" {% if checked %}open{% endif %}>
+        <summary>In Cart / Done ({{ checked|length }})</summary>
+        <ul class="grocery-row-list">
+          {% for item in checked %}
+            <li class="grocery-row-item is-done">
+              <div class="grocery-main-cell">
+                <form method="post" action="/grocery/toggle/{{ item.id }}">
+                  <button type="submit" class="check-btn is-checked" aria-label="Uncheck {{ item.item_name }}">✓</button>
+                </form>
+                <span class="item-name">{{ item.item_name }}</span>
+                {% if item.quantity %}<span class="qty-chip">Qty: {{ item.quantity }}</span>{% endif %}
+                {% if item.notes %}<span class="item-note">Note: {{ item.notes }}</span>{% endif %}
+              </div>
+              <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
+                <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
+              </form>
+            </li>
+          {% else %}
+            <li class="grocery-empty">No checked items yet.</li>
+          {% endfor %}
+        </ul>
+      </details>
 
-      <div class="grocery-actions">
+      <footer class="grocery-footer-actions">
         <form method="post" action="/grocery/clear-checked" onsubmit="return confirm('Clear all checked items?');">
           <button type="submit" class="btn btn-ghost btn-sm">Clear checked</button>
         </form>
