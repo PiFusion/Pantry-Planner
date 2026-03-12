@@ -3,57 +3,37 @@
 
 {% block content %}
 <div class="page grocery-page">
-  <div class="grocery-layout">
-    <section class="grocery-card grocery-main-card">
-      <header class="grocery-card-head">
-        <h1>Grocery List</h1>
-      </header>
+  <section class="grocery-card grocery-main-card">
+    <header class="grocery-card-head">
+      <h1>Grocery List</h1>
+    </header>
 
-      <section class="grocery-entry-card grocery-add-bar">
-        <form method="post" action="/grocery/add" class="grocery-add-grid">
-          <input name="item_name" class="form-control" placeholder="Search or add item name" required>
-          <input name="quantity" class="form-control" placeholder="Qty   2 bags">
-          <input name="notes" class="form-control" placeholder="Notes">
-          <button type="submit" class="btn btn-primary grocery-add-btn">Add</button>
-        </form>
-      </section>
-
-      <div class="grocery-toolbar">
-        <div class="grocery-stats">
-          <span>Total items: <strong>{{ total_count }}</strong></span>
-          <span>Checked off: <strong>{{ checked_count }}</strong></span>
+    <section class="grocery-entry-card grocery-add-bar">
+      <form method="post" action="/grocery/add" class="grocery-add-grid" autocomplete="off">
+        <div class="grocery-autocomplete" id="groceryAutocomplete">
+          <input
+            id="groceryItemInput"
+            name="item_name"
+            class="form-control"
+            placeholder="Search or add item name"
+            value="{{ ingredient_q }}"
+            required
+          >
+          <ul class="grocery-suggestion-list{% if not ingredient_suggestions %} hidden{% endif %}" id="grocerySuggestionList">
+            {% for ingredient in ingredient_suggestions %}
+              <li>
+                <button type="button" class="grocery-suggestion-item" data-name="{{ ingredient }}">
+                  <span>{{ ingredient }}</span>
+                </button>
+              </li>
+            {% endfor %}
+          </ul>
         </div>
-
-        <div class="grocery-actions">
-          <form method="post" action="/grocery/clear-checked" onsubmit="return confirm('Clear all checked items?');">
-            <button type="submit" class="btn btn-ghost btn-sm">Clear checked</button>
-          </form>
-          <a class="btn btn-ghost btn-sm" href="/grocery/print" target="_blank">🖨 Print</a>
-        </div>
-      </div>
-
-      <section class="grocery-section">
-        <h2>To Buy ({{ to_buy|length }})</h2>
-        <ul class="grocery-row-list">
-          {% for item in to_buy %}
-            <li class="grocery-row-item">
-              <div class="grocery-main-cell">
-                <form method="post" action="/grocery/toggle/{{ item.id }}">
-                  <button type="submit" class="check-btn" aria-label="Mark {{ item.item_name }} done"></button>
-                </form>
-                <span class="item-name">{{ item.item_name }}</span>
-                {% if item.quantity %}<span class="qty-chip">Qty: {{ item.quantity }}</span>{% endif %}
-                {% if item.notes %}<span class="item-note">Note: {{ item.notes }}</span>{% endif %}
-              </div>
-              <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
-                <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
-              </form>
-            </li>
-          {% else %}
-            <li class="grocery-empty">No items to buy.</li>
-          {% endfor %}
-        </ul>
-      </section>
+        <input name="quantity" class="form-control" placeholder="Qty   2 bags">
+        <input name="notes" class="form-control" placeholder="Notes">
+        <button type="submit" class="btn btn-primary grocery-add-btn">Add</button>
+      </form>
+    </section>
 
       <details class="grocery-done" {% if checked %}open{% endif %}>
         <summary>In Cart / Done ({{ checked|length }})</summary>
@@ -82,70 +62,125 @@
         <form method="post" action="/grocery/clear-checked" onsubmit="return confirm('Clear all checked items?');">
           <button type="submit" class="btn btn-ghost btn-sm">Clear checked</button>
         </form>
-        <form method="post" action="/grocery/clear" onsubmit="return confirm('Delete ALL grocery items?');">
-          <button type="submit" class="btn btn-ghost btn-sm btn-delete-all">Delete all</button>
-        </form>
-        <a class="btn btn-ghost btn-sm" href="/grocery/print" target="_blank">🖨</a>
-      </footer>
+        <a class="btn btn-ghost btn-sm" href="/grocery/print" target="_blank">🖨 Print</a>
+      </div>
+    </div>
+
+    <section class="grocery-section">
+      <h2>To Buy ({{ to_buy|length }})</h2>
+      <ul class="grocery-row-list">
+        {% for item in to_buy %}
+          <li class="grocery-row-item">
+            <div class="grocery-main-cell">
+              <form method="post" action="/grocery/toggle/{{ item.id }}">
+                <button type="submit" class="check-btn" aria-label="Mark {{ item.item_name }} done"></button>
+              </form>
+              <span class="item-name">{{ item.item_name }}</span>
+            </div>
+
+            <form method="post" action="/grocery/update/{{ item.id }}" class="grocery-edit-form">
+              <input name="quantity" class="form-control grocery-inline-input" value="{{ item.quantity or '' }}" placeholder="Qty">
+              <input name="notes" class="form-control grocery-inline-input grocery-note-input" value="{{ item.notes or '' }}" placeholder="Note">
+              <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+            </form>
+
+            <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
+              <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="grocery-empty">No items to buy.</li>
+        {% endfor %}
+      </ul>
     </section>
 
-    <aside class="grocery-card grocery-side-panel">
-      <header class="grocery-card-head">
-        <h2>Add from ingredients</h2>
-        <p class="grocery-panel-kicker">From ingredients</p>
-      </header>
-
-      <div class="grocery-entry-card">
-        <form method="get" action="/grocery/" class="grocery-ingredient-search">
-          <input
-            name="ingredient_q"
-            value="{{ ingredient_q }}"
-            class="form-control"
-            placeholder="Search {{ ingredient_total }} ingredients..."
-          >
-          <button type="submit" class="btn btn-ghost">Search</button>
-        </form>
-
-        {% if recent_ingredients %}
-          <section class="grocery-panel-block">
-            <h3>Recent</h3>
-            <div class="grocery-ingredient-chips">
-              {% for ingredient in recent_ingredients %}
-                <form method="post" action="/grocery/add" class="chip-form">
-                  <input type="hidden" name="item_name" value="{{ ingredient }}">
-                  <button type="submit" class="ingredient-chip">{{ ingredient }}</button>
-                </form>
-              {% endfor %}
+    <details class="grocery-done" {% if checked %}open{% endif %}>
+      <summary>In Cart / Done ({{ checked|length }})</summary>
+      <ul class="grocery-row-list">
+        {% for item in checked %}
+          <li class="grocery-row-item is-done">
+            <div class="grocery-main-cell">
+              <form method="post" action="/grocery/toggle/{{ item.id }}">
+                <button type="submit" class="check-btn is-checked" aria-label="Uncheck {{ item.item_name }}">✓</button>
+              </form>
+              <span class="item-name">{{ item.item_name }}</span>
             </div>
-          </section>
-        {% endif %}
 
-        <section class="grocery-panel-block">
-          <h3>Results</h3>
-          <ul class="ingredient-picker-list grocery-ingredient-results">
-            {% for ingredient in ingredient_suggestions %}
-              <li class="ingredient-row">
-                <div class="ingredient-main">
-                  <img
-                    class="ingredient-thumb"
-                    src="https://www.themealdb.com/images/ingredients/{{ ingredient | urlencode }}-Small.png"
-                    alt="{{ ingredient }}"
-                    loading="lazy"
-                  >
-                  <span>{{ ingredient }}</span>
-                </div>
-                <form method="post" action="/grocery/add">
-                  <input type="hidden" name="item_name" value="{{ ingredient }}">
-                  <button type="submit" class="ingredient-action" aria-label="Add {{ ingredient }}">+</button>
-                </form>
-              </li>
-            {% else %}
-              <li class="grocery-empty">No ingredient matches found.</li>
-            {% endfor %}
-          </ul>
-        </section>
-      </div>
-    </aside>
-  </div>
+            <form method="post" action="/grocery/update/{{ item.id }}" class="grocery-edit-form">
+              <input name="quantity" class="form-control grocery-inline-input" value="{{ item.quantity or '' }}" placeholder="Qty">
+              <input name="notes" class="form-control grocery-inline-input grocery-note-input" value="{{ item.notes or '' }}" placeholder="Note">
+              <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+            </form>
+
+            <form method="post" action="/grocery/delete/{{ item.id }}" onsubmit="return confirm('Delete this grocery item?');">
+              <button type="submit" class="trash-btn" aria-label="Delete {{ item.item_name }}">🗑</button>
+            </form>
+          </li>
+        {% else %}
+          <li class="grocery-empty">No checked items yet.</li>
+        {% endfor %}
+      </ul>
+    </details>
+
+    <footer class="grocery-footer-actions">
+      <form method="post" action="/grocery/clear-checked" onsubmit="return confirm('Clear all checked items?');">
+        <button type="submit" class="btn btn-ghost btn-sm">Clear checked</button>
+      </form>
+      <form method="post" action="/grocery/clear" onsubmit="return confirm('Delete ALL grocery items?');">
+        <button type="submit" class="btn btn-ghost btn-sm btn-delete-all">Delete all</button>
+      </form>
+      <a class="btn btn-ghost btn-sm" href="/grocery/print" target="_blank">🖨</a>
+    </footer>
+  </section>
 </div>
+
+<script>
+  (function () {
+    const ingredientCatalog = {{ ingredient_catalog|tojson }};
+    const input = document.getElementById('groceryItemInput');
+    const list = document.getElementById('grocerySuggestionList');
+    if (!input || !list) return;
+
+    function renderSuggestions(query) {
+      const q = query.trim().toLowerCase();
+      if (!q) {
+        list.innerHTML = '';
+        list.classList.add('hidden');
+        return;
+      }
+
+      const matches = ingredientCatalog
+        .filter((name) => name.toLowerCase().includes(q))
+        .slice(0, 8);
+
+      if (!matches.length) {
+        list.innerHTML = '';
+        list.classList.add('hidden');
+        return;
+      }
+
+      list.innerHTML = matches.map((name) => (
+        `<li><button type="button" class="grocery-suggestion-item" data-name="${name}"><span>${name}</span></button></li>`
+      )).join('');
+      list.classList.remove('hidden');
+    }
+
+    list.addEventListener('click', (event) => {
+      const button = event.target.closest('.grocery-suggestion-item');
+      if (!button) return;
+      input.value = button.dataset.name || '';
+      list.classList.add('hidden');
+      input.focus();
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('#groceryAutocomplete')) {
+        list.classList.add('hidden');
+      }
+    });
+
+    input.addEventListener('input', (event) => renderSuggestions(event.target.value));
+    input.addEventListener('focus', () => renderSuggestions(input.value));
+  })();
+</script>
 {% endblock %}

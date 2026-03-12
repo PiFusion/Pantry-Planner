@@ -189,7 +189,7 @@ class PantryPlannerTestCase(unittest.TestCase):
             self.assertEqual(rows[0]['item_name'], 'Todo item')
             self.assertEqual(rows[0]['is_checked'], 0)
 
-    def test_grocery_page_shows_mealdb_ingredients_section(self):
+    def test_grocery_page_shows_autocomplete_ingredient_matches(self):
         self._create_user()
         self._login()
 
@@ -203,9 +203,44 @@ class PantryPlannerTestCase(unittest.TestCase):
         text = r.get_data(as_text=True)
 
         self.assertEqual(r.status_code, 200)
-        self.assertIn('From ingredients', text)
+        self.assertIn('Search or add item name', text)
         self.assertIn('Bacon', text)
-        self.assertNotIn('Milk', text)
+        self.assertIn('<span>Bacon</span>', text)
+        self.assertNotIn('<span>Milk</span>', text)
+
+
+    def test_grocery_item_update_edits_quantity_and_notes(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT INTO grocery_items (user_id, item_name, quantity, notes) VALUES (?, ?, ?, ?)",
+                (uid, "Bread", "1 loaf", "old"),
+            )
+            item_id = db.execute(
+                "SELECT id FROM grocery_items WHERE user_id = ? AND item_name = ?",
+                (uid, "Bread"),
+            ).fetchone()["id"]
+            db.commit()
+
+        r = self.client.post(
+            f"/grocery/update/{item_id}",
+            data={"quantity": "2 loaves", "notes": "whole wheat"},
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/grocery/', r.headers['Location'])
+
+        with self.app.app_context():
+            db = get_db()
+            updated = db.execute(
+                "SELECT quantity, notes FROM grocery_items WHERE id = ? AND user_id = ?",
+                (item_id, uid),
+            ).fetchone()
+            self.assertEqual(updated['quantity'], '2 loaves')
+            self.assertEqual(updated['notes'], 'whole wheat')
 
     def test_grocery_print_view_renders_without_platform_specific_strftime(self):
         uid = self._create_user()
