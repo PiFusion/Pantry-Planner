@@ -22,6 +22,20 @@ def login_required(view):
 @bp.get("/")
 @login_required
 def list_items():
+    ingredient_q = request.args.get("ingredient_q", "").strip().lower()
+    ingredient_rows = get_db().execute(
+        """
+        SELECT name
+        FROM ingredients
+        WHERE hidden = 0
+        ORDER BY name ASC
+        """
+    ).fetchall()
+    all_ingredients = [r["name"] for r in ingredient_rows]
+    ingredient_suggestions = all_ingredients
+    if ingredient_q:
+        ingredient_suggestions = [n for n in all_ingredients if ingredient_q in n.lower()]
+
     rows = get_db().execute(
         """
         SELECT id, item_name, quantity, notes, is_checked, created_at
@@ -42,6 +56,8 @@ def list_items():
         checked=checked,
         total_count=len(rows),
         checked_count=len(checked),
+        ingredient_q=ingredient_q,
+        ingredient_suggestions=ingredient_suggestions[:30],
     )
 
 
@@ -165,6 +181,6 @@ def print_view():
     return render_template(
         "grocery/print.html",
         items=to_buy,
-        printed_at=datetime.now(),
+        printed_at=datetime.now().strftime("%b %d, %Y %I:%M %p").replace(" 0", " "),
         total_count=len(to_buy),
     )

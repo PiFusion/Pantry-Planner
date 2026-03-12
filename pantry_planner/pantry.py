@@ -15,35 +15,64 @@ def _set_selected_ids(id_set):
     session["selected_ingredient_ids"] = sorted(list(id_set))
 
 
-def _load_ingredients_and_selection(q: str):
+def _load_filtered_ingredients(q: str):
     db = get_db()
+    params = []
+    where = "WHERE hidden = 0"
+    if q:
+        where += " AND lower(name) LIKE ?"
+        params.append(f"%{q}%")
 
     rows = db.execute(
-        "SELECT id, name FROM ingredients WHERE hidden = 0 ORDER BY name"
+        f"SELECT id, name FROM ingredients {where} ORDER BY name",
+        params,
     ).fetchall()
-    all_ingredients = [{"id": r["id"], "name": r["name"]} for r in rows]
+    return [{"id": r["id"], "name": r["name"]} for r in rows]
+
+
+def _selected_ingredients_for_current_user():
+    db = get_db()
 
     if g.user:
-        selected_rows = db.execute(
-            "SELECT ingredient_id FROM pantry_items WHERE user_id = ?",
+        rows = db.execute(
+            """
+            SELECT i.id, i.name
+            FROM pantry_items p
+            JOIN ingredients i ON i.id = p.ingredient_id
+            WHERE p.user_id = ? AND i.hidden = 0
+            ORDER BY i.name
+            """,
             (g.user["id"],),
         ).fetchall()
-        selected_ids = {r["ingredient_id"] for r in selected_rows}
-    else:
-        selected_ids = _get_selected_ids()
+        selected_ingredients = [{"id": r["id"], "name": r["name"]} for r in rows]
+        selected_ids = {r["id"] for r in rows}
+        return selected_ingredients, selected_ids
 
-    filtered_ingredients = all_ingredients
-    if q:
-        filtered_ingredients = [i for i in all_ingredients if q in i["name"].lower()]
+    selected_ids = _get_selected_ids()
+    if not selected_ids:
+        return [], set()
 
-    selected_ingredients = [i for i in all_ingredients if i["id"] in selected_ids]
-    return filtered_ingredients, selected_ingredients, selected_ids
+    placeholders = ",".join(["?"] * len(selected_ids))
+    rows = db.execute(
+        f"""
+        SELECT id, name
+        FROM ingredients
+        WHERE hidden = 0 AND id IN ({placeholders})
+        ORDER BY name
+        """,
+        list(selected_ids),
+    ).fetchall()
+
+    selected_ingredients = [{"id": r["id"], "name": r["name"]} for r in rows]
+    normalized_ids = {r["id"] for r in rows}
+    return selected_ingredients, normalized_ids
 
 
 @bp.get("/ingredients")
 def ingredients():
     q = request.args.get("q", "").strip().lower()
-    filtered_ingredients, selected_ingredients, selected_ids = _load_ingredients_and_selection(q)
+    filtered_ingredients = _load_filtered_ingredients(q)
+    selected_ingredients, selected_ids = _selected_ingredients_for_current_user()
 
     return render_template(
         "pantry/ingredients.html",
@@ -116,19 +145,16 @@ def toggle_ingredient():
 @bp.post("/ingredients/toggle-async")
 def toggle_ingredient_async():
     ingredient_id = int(request.form["ingredient_id"])
-    q = request.form.get("return_q", "").strip().lower()
 
     action, ingredient_name = _toggle_by_id(ingredient_id)
-    _, selected_ingredients, selected_ids = _load_ingredients_and_selection(q)
+    selected_count = len(_selected_ingredients_for_current_user()[1])
 
     return jsonify({
         "ok": True,
         "action": action,
         "ingredient_id": ingredient_id,
         "ingredient_name": ingredient_name,
-        "selected_count": len(selected_ids),
-        "selected_ingredients": selected_ingredients,
-        "selected_ids": list(selected_ids),
+        "selected_count": selected_count,
     })
 
 
@@ -156,4 +182,4 @@ def clear_ingredients_async():
     else:
         _set_selected_ids(set())
 
-    return jsonify({"ok": True, "selected_count": 0, "selected_ingredients": [], "selected_ids": []})
+    return jsonify({"ok": True, "selected_count": 0})

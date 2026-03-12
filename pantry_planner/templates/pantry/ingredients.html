@@ -118,8 +118,11 @@ const localSearch = document.getElementById('ingredientLocalSearch');
 const selectedCountHeader = document.getElementById('selectedCountHeader');
 const selectedList = document.getElementById('selectedList');
 const clearForm = document.getElementById('clearForm');
-const ingredientRows = document.querySelectorAll('#ingredientPickerList .ingredient-row');
 const returnQ = {{ q|tojson }};
+
+function buildThumb(name) {
+  return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
+}
 
 if (localSearch) {
   localSearch.addEventListener('input', () => {
@@ -130,68 +133,86 @@ if (localSearch) {
   });
 }
 
-function buildThumb(name) {
-  return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
+function selectedRowMarkup(id, name) {
+  return `
+    <div class="ingredient-main">
+      <img class="ingredient-thumb" src="${buildThumb(name)}" alt="${name}" loading="lazy">
+      <span>${name}</span>
+    </div>
+    <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
+      <input type="hidden" name="ingredient_id" value="${id}">
+      <input type="hidden" name="return_q" value="${returnQ}">
+      <button type="submit" class="ingredient-remove" aria-label="Remove ${name}">×</button>
+    </form>
+  `;
 }
 
-function updateSelectedList(items) {
+function ensureSelectedEmptyState() {
   if (!selectedList) return;
-  selectedList.innerHTML = '';
+  if (selectedList.querySelector('.ingredient-row')) return;
 
-  if (!items.length) {
-    const empty = document.createElement('li');
-    empty.className = 'ingredient-empty';
-    empty.id = 'selectedEmpty';
-    empty.textContent = 'No selected ingredients yet.';
-    selectedList.appendChild(empty);
-    clearForm.classList.add('hidden');
+  selectedList.innerHTML = '';
+  const empty = document.createElement('li');
+  empty.className = 'ingredient-empty';
+  empty.id = 'selectedEmpty';
+  empty.textContent = 'No selected ingredients yet.';
+  selectedList.appendChild(empty);
+}
+
+function addSelectedIngredient(id, name) {
+  if (!selectedList) return;
+  const existing = selectedList.querySelector(`.ingredient-row[data-id="${id}"]`);
+  if (existing) return;
+
+  const empty = document.getElementById('selectedEmpty');
+  if (empty) empty.remove();
+
+  const li = document.createElement('li');
+  li.className = 'ingredient-row';
+  li.dataset.id = String(id);
+  li.dataset.name = name.toLowerCase();
+  li.innerHTML = selectedRowMarkup(id, name);
+
+  const img = li.querySelector('img');
+  img.onerror = () => { img.src = 'https://www.themealdb.com/images/ingredients/Chicken-Small.png'; };
+
+  selectedList.appendChild(li);
+}
+
+function removeSelectedIngredient(id) {
+  if (!selectedList) return;
+  const row = selectedList.querySelector(`.ingredient-row[data-id="${id}"]`);
+  if (row) row.remove();
+  ensureSelectedEmptyState();
+}
+
+function setClearFormVisibility(visible) {
+  if (!clearForm) return;
+  clearForm.classList.toggle('hidden', !visible);
+}
+
+function setLeftButtonState(ingredientId, isAdded, ingredientName) {
+  const row = document.querySelector(`#ingredientPickerList .ingredient-row[data-id="${ingredientId}"]`);
+  if (!row) return;
+
+  const form = row.querySelector('.ingredient-toggle-form');
+  if (!form) return;
+
+  if (isAdded) {
+    form.innerHTML = `
+      <input type="hidden" name="ingredient_id" value="${ingredientId}">
+      <input type="hidden" name="return_q" value="${returnQ}">
+      <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
+    `;
     return;
   }
 
-  clearForm.classList.remove('hidden');
-  items.forEach((ing) => {
-    const li = document.createElement('li');
-    li.className = 'ingredient-row';
-    li.dataset.id = ing.id;
-
-    li.innerHTML = `
-      <div class="ingredient-main">
-        <img class="ingredient-thumb" src="${buildThumb(ing.name)}" alt="${ing.name}" loading="lazy">
-        <span>${ing.name}</span>
-      </div>
-      <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-        <input type="hidden" name="ingredient_id" value="${ing.id}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-remove" aria-label="Remove ${ing.name}">×</button>
-      </form>
-    `;
-
-    const img = li.querySelector('img');
-    img.onerror = () => { img.src = 'https://www.themealdb.com/images/ingredients/Chicken-Small.png'; };
-    selectedList.appendChild(li);
-  });
-}
-
-function updateLeftButtons(selectedIds) {
-  ingredientRows.forEach((row) => {
-    const ingId = Number(row.dataset.id);
-    const form = row.querySelector('.ingredient-toggle-form');
-    if (!form) return;
-    if (selectedIds.includes(ingId)) {
-      form.innerHTML = `
-        <input type="hidden" name="ingredient_id" value="${ingId}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-action ingredient-added">✓ Added</button>
-      `;
-    } else {
-      const name = row.dataset.ingredientName || 'ingredient';
-      form.innerHTML = `
-        <input type="hidden" name="ingredient_id" value="${ingId}">
-        <input type="hidden" name="return_q" value="${returnQ}">
-        <button type="submit" class="ingredient-action" aria-label="Add ${name}">+</button>
-      `;
-    }
-  });
+  const name = ingredientName || row.dataset.ingredientName || 'ingredient';
+  form.innerHTML = `
+    <input type="hidden" name="ingredient_id" value="${ingredientId}">
+    <input type="hidden" name="return_q" value="${returnQ}">
+    <button type="submit" class="ingredient-action" aria-label="Add ${name}">+</button>
+  `;
 }
 
 function setPendingState(form, isPending) {
@@ -199,6 +220,36 @@ function setPendingState(form, isPending) {
   if (!button) return;
   button.disabled = isPending;
   button.classList.toggle('is-pending', isPending);
+}
+
+function applyToggleResponse(data) {
+  if (!data || !data.ok) return;
+
+  selectedCountHeader.textContent = data.selected_count;
+  setClearFormVisibility(data.selected_count > 0);
+
+  if (data.action === 'added') {
+    addSelectedIngredient(data.ingredient_id, data.ingredient_name);
+    setLeftButtonState(data.ingredient_id, true, data.ingredient_name);
+    showToast(data.ingredient_name, data.ingredient_id);
+  }
+
+  if (data.action === 'removed') {
+    removeSelectedIngredient(data.ingredient_id);
+    setLeftButtonState(data.ingredient_id, false, data.ingredient_name);
+  }
+}
+
+function applyClearResponse(data) {
+  if (!data || !data.ok) return;
+  selectedCountHeader.textContent = data.selected_count;
+  selectedList.querySelectorAll('.ingredient-row').forEach((row) => row.remove());
+  ensureSelectedEmptyState();
+  setClearFormVisibility(false);
+
+  document.querySelectorAll('#ingredientPickerList .ingredient-row').forEach((row) => {
+    setLeftButtonState(Number(row.dataset.id), false, row.dataset.ingredientName);
+  });
 }
 
 function showToast(name, id) {
@@ -219,12 +270,7 @@ function showToast(name, id) {
       body,
     })
       .then((r) => r.json())
-      .then((data) => {
-        if (!data.ok) return;
-        selectedCountHeader.textContent = data.selected_count;
-        updateSelectedList(data.selected_ingredients || []);
-        updateLeftButtons(data.selected_ids || []);
-      })
+      .then((data) => applyToggleResponse(data))
       .finally(() => toast.remove());
   });
 
@@ -235,8 +281,8 @@ function showToast(name, id) {
 document.addEventListener('submit', (e) => {
   const form = e.target;
   if (!form.classList.contains('ingredient-toggle-form') && form.id !== 'clearForm') return;
-  e.preventDefault();
 
+  e.preventDefault();
   setPendingState(form, true);
 
   const endpoint = form.id === 'clearForm' ? '/ingredients/clear-async' : '/ingredients/toggle-async';
@@ -249,12 +295,10 @@ document.addEventListener('submit', (e) => {
   })
     .then((r) => r.json())
     .then((data) => {
-      if (!data.ok) return;
-      selectedCountHeader.textContent = data.selected_count;
-      updateSelectedList(data.selected_ingredients || []);
-      updateLeftButtons(data.selected_ids || []);
-      if (data.action === 'added') {
-        showToast(data.ingredient_name, data.ingredient_id);
+      if (form.id === 'clearForm') {
+        applyClearResponse(data);
+      } else {
+        applyToggleResponse(data);
       }
     })
     .catch(() => {
@@ -288,12 +332,7 @@ if (toast) {
         body,
       })
         .then((r) => r.json())
-        .then((data) => {
-          if (!data.ok) return;
-          selectedCountHeader.textContent = data.selected_count;
-          updateSelectedList(data.selected_ingredients || []);
-          updateLeftButtons(data.selected_ids || []);
-        })
+        .then((data) => applyToggleResponse(data))
         .finally(() => toast.remove());
     });
   }
