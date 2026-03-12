@@ -9,10 +9,6 @@ The application integrates with **TheMealDB API** to retrieve recipe information
 # Features
 
 - Ingredient browser with search (`/ingredients`)
-- Recipe discovery (`/recipes/search`)
-  - Partial mode (`match=any`)
-  - Strict mode (`match=all`)
-  - Sorting (`sort=match` or `sort=name`)
 - User authentication
   - Register
   - Login
