@@ -78,6 +78,7 @@ def create_app():
     from .bookmarks import bp as bookmarks_bp
     from .admin import bp as admin_bp
     from .grocery import bp as grocery_bp
+    from .planner import bp as planner_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(pantry_bp)
@@ -85,6 +86,7 @@ def create_app():
     app.register_blueprint(bookmarks_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(grocery_bp)
+    app.register_blueprint(planner_bp)
 
     @app.get("/")
     def home():
