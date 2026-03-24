@@ -53,7 +53,7 @@
 
       <ul class="ingredient-picker-list selected-list" id="selectedList">
         {% for ing in selected_ingredients %}
-          <li class="ingredient-row" data-id="{{ ing.id }}" data-name="{{ ing.name|lower }}">
+          <li class="ingredient-row selected-ingredient-row" data-id="{{ ing.id }}" data-name="{{ ing.name|lower }}">
             <div class="ingredient-main">
               <img
                 class="ingredient-thumb"
@@ -64,6 +64,17 @@
               >
               <span>{{ ing.name }}</span>
             </div>
+
+            {% if g.user %}
+              <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form">
+                <input type="hidden" name="return_q" value="{{ q }}">
+                <label>
+                  Expiry
+                  <input type="date" name="expires_on" class="form-control" value="{{ ing.expires_on or '' }}">
+                </label>
+                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+              </form>
+            {% endif %}
 
             <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
               <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
