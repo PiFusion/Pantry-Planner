@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from werkzeug.security import generate_password_hash
 
@@ -189,7 +190,7 @@ class PantryPlannerTestCase(unittest.TestCase):
             self.assertEqual(rows[0]['item_name'], 'Todo item')
             self.assertEqual(rows[0]['is_checked'], 0)
 
-    def test_grocery_page_shows_mealdb_ingredients_section(self):
+    def test_grocery_page_shows_autocomplete_ingredient_matches(self):
         self._create_user()
         self._login()
 
@@ -203,9 +204,44 @@ class PantryPlannerTestCase(unittest.TestCase):
         text = r.get_data(as_text=True)
 
         self.assertEqual(r.status_code, 200)
-        self.assertIn('From ingredients', text)
+        self.assertIn('Search or add item name', text)
         self.assertIn('Bacon', text)
-        self.assertNotIn('Milk', text)
+        self.assertIn('<span>Bacon</span>', text)
+        self.assertNotIn('<span>Milk</span>', text)
+
+
+    def test_grocery_item_update_edits_quantity_and_notes(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT INTO grocery_items (user_id, item_name, quantity, notes) VALUES (?, ?, ?, ?)",
+                (uid, "Bread", "1 loaf", "old"),
+            )
+            item_id = db.execute(
+                "SELECT id FROM grocery_items WHERE user_id = ? AND item_name = ?",
+                (uid, "Bread"),
+            ).fetchone()["id"]
+            db.commit()
+
+        r = self.client.post(
+            f"/grocery/update/{item_id}",
+            data={"quantity": "2 loaves", "notes": "whole wheat"},
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('/grocery/', r.headers['Location'])
+
+        with self.app.app_context():
+            db = get_db()
+            updated = db.execute(
+                "SELECT quantity, notes FROM grocery_items WHERE id = ? AND user_id = ?",
+                (item_id, uid),
+            ).fetchone()
+            self.assertEqual(updated['quantity'], '2 loaves')
+            self.assertEqual(updated['notes'], 'whole wheat')
 
     def test_grocery_print_view_renders_without_platform_specific_strftime(self):
         uid = self._create_user()
@@ -286,6 +322,129 @@ class PantryPlannerTestCase(unittest.TestCase):
             self.assertEqual(item['item_name'], 'Tomato')
             self.assertEqual(item['quantity'], '2 lb')
             self.assertEqual(item['notes'], 'roma')
+
+
+    def test_runtime_migration_adds_missing_columns_for_existing_db(self):
+        legacy_db_path = os.path.join(self.temp_dir.name, "legacy.sqlite")
+        conn = __import__("sqlite3").connect(legacy_db_path)
+        conn.executescript(
+            """
+            CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, role TEXT, created_at TEXT);
+            CREATE TABLE ingredients (id INTEGER PRIMARY KEY, name TEXT, hidden INTEGER, updated_at TEXT);
+            CREATE TABLE pantry_items (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, ingredient_id INTEGER NOT NULL, created_at TEXT);
+            CREATE TABLE grocery_items (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, item_name TEXT NOT NULL, quantity TEXT, notes TEXT, is_checked INTEGER, created_at TEXT);
+            """
+        )
+        conn.commit()
+        conn.close()
+
+        legacy_app = create_app()
+        legacy_app.config.update(TESTING=True, DATABASE=legacy_db_path, SECRET_KEY="legacy")
+
+        with legacy_app.app_context():
+            db = get_db()
+            pantry_cols = {r[1] for r in db.execute("PRAGMA table_info(pantry_items)").fetchall()}
+            grocery_cols = {r[1] for r in db.execute("PRAGMA table_info(grocery_items)").fetchall()}
+            planner_table = db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='meal_plans'"
+            ).fetchone()
+
+            self.assertIn("expires_on", pantry_cols)
+            self.assertIn("added_on", pantry_cols)
+            self.assertIn("quantity_amount", grocery_cols)
+            self.assertIn("quantity_unit", grocery_cols)
+            self.assertIsNotNone(planner_table)
+
+    def test_pantry_expiry_update_sets_date_for_selected_ingredient(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute("INSERT INTO ingredients (name, hidden) VALUES ('Lettuce', 0)")
+            ingredient_id = db.execute("SELECT id FROM ingredients WHERE name = 'Lettuce'").fetchone()["id"]
+            db.execute(
+                "INSERT INTO pantry_items (user_id, ingredient_id) VALUES (?, ?)",
+                (uid, ingredient_id),
+            )
+            db.commit()
+
+        r = self.client.post(
+            f"/ingredients/expiry/{ingredient_id}",
+            data={"expires_on": "2026-04-01", "return_q": ""},
+            follow_redirects=False,
+        )
+        self.assertEqual(r.status_code, 302)
+
+        with self.app.app_context():
+            db = get_db()
+            row = db.execute(
+                "SELECT expires_on FROM pantry_items WHERE user_id = ? AND ingredient_id = ?",
+                (uid, ingredient_id),
+            ).fetchone()
+            self.assertEqual(row["expires_on"], "2026-04-01")
+
+    def test_meal_plan_generate_grocery_merges_quantity_units(self):
+        uid = self._create_user()
+        self._login()
+
+        with self.app.app_context():
+            db = get_db()
+            db.execute(
+                "INSERT INTO meal_plans (user_id, week_start) VALUES (?, ?)",
+                (uid, "2026-03-23"),
+            )
+            plan_id = db.execute(
+                "SELECT id FROM meal_plans WHERE user_id = ? AND week_start = ?",
+                (uid, "2026-03-23"),
+            ).fetchone()["id"]
+            db.execute(
+                """
+                INSERT INTO meal_plan_entries (plan_id, day_of_week, meal_slot, mealdb_meal_id, meal_name)
+                VALUES (?, 0, 'dinner', '101', 'Meal A')
+                """,
+                (plan_id,),
+            )
+            db.execute(
+                """
+                INSERT INTO meal_plan_entries (plan_id, day_of_week, meal_slot, mealdb_meal_id, meal_name)
+                VALUES (?, 1, 'dinner', '102', 'Meal B')
+                """,
+                (plan_id,),
+            )
+            db.commit()
+
+        fake_meals = {
+            "101": {"strIngredient1": "Chicken", "strMeasure1": "2 lb"},
+            "102": {"strIngredient1": "Chicken", "strMeasure1": "1 lb"},
+        }
+
+        with patch("pantry_planner.planner.lookup_meal", side_effect=lambda meal_id: fake_meals.get(meal_id)):
+            r = self.client.post(
+                "/planner/generate-grocery?week_start=2026-03-23",
+                data={"day_of_week": ["0", "1"]},
+                follow_redirects=False,
+            )
+
+        self.assertEqual(r.status_code, 302)
+
+        with self.app.app_context():
+            db = get_db()
+            item = db.execute(
+                """
+                SELECT item_name, quantity, quantity_amount, quantity_unit
+                FROM grocery_items
+                WHERE user_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (uid,),
+            ).fetchone()
+            self.assertEqual(item["item_name"], "Chicken")
+            self.assertEqual(item["quantity"], "3 lb")
+            self.assertEqual(item["quantity_amount"], 3.0)
+            self.assertEqual(item["quantity_unit"], "lb")
+
 
 
 if __name__ == "__main__":

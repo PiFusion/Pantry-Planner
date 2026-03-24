@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS pantry_items (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id       INTEGER NOT NULL,
   ingredient_id INTEGER NOT NULL,
+  expires_on    TEXT,
+  added_on      TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(user_id, ingredient_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -52,14 +54,41 @@ CREATE TABLE IF NOT EXISTS meal_cache (
 
 -- Grocery list items per user
 CREATE TABLE IF NOT EXISTS grocery_items (
+  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id                  INTEGER NOT NULL,
+  item_name                TEXT NOT NULL,
+  quantity                 TEXT,
+  quantity_amount          REAL,
+  quantity_unit            TEXT,
+  quantity_unit_normalized TEXT,
+  quantity_parse_status    TEXT,
+  notes                    TEXT,
+  is_checked               INTEGER NOT NULL DEFAULT 0,
+  created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Meal planning by week
+CREATE TABLE IF NOT EXISTS meal_plans (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     INTEGER NOT NULL,
-  item_name   TEXT NOT NULL,
-  quantity    TEXT,
-  notes       TEXT,
-  is_checked  INTEGER NOT NULL DEFAULT 0,
+  week_start  TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(user_id, week_start),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS meal_plan_entries (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  plan_id        INTEGER NOT NULL,
+  day_of_week    INTEGER NOT NULL,
+  meal_slot      TEXT NOT NULL,
+  mealdb_meal_id TEXT NOT NULL,
+  meal_name      TEXT,
+  meal_thumb     TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(plan_id, day_of_week, meal_slot),
+  FOREIGN KEY (plan_id) REFERENCES meal_plans(id) ON DELETE CASCADE
 );
 
 COMMIT;
@@ -69,3 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_pantry_user ON pantry_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_ingredients_hidden ON ingredients(hidden);
 CREATE INDEX IF NOT EXISTS idx_grocery_user ON grocery_items(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_pantry_expiry ON pantry_items(expires_on);
+CREATE INDEX IF NOT EXISTS idx_meal_plans_user_week ON meal_plans(user_id, week_start);
+CREATE INDEX IF NOT EXISTS idx_plan_entries_plan_day ON meal_plan_entries(plan_id, day_of_week);

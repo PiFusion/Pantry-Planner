@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Meal Planner — Pantry Planner{% endblock %}
+
+{% block content %}
+<div class="page planner-page">
+  <div class="planner-head">
+    <h1>Weekly Meal Planner</h1>
+    <div class="planner-nav">
+      <a class="btn btn-ghost" href="{{ url_for('planner.week_view', week_start=prev_week) }}">← Previous</a>
+      <span class="planner-week-label">Week of {{ week_start }}</span>
+      <a class="btn btn-ghost" href="{{ url_for('planner.week_view', week_start=next_week) }}">Next →</a>
+    </div>
+  </div>
+
+  <section class="planner-card">
+    <header class="planner-card-head">
+      <h2>Plan your meals</h2>
+      <p>Pick bookmarked meals for lunch and dinner, then auto-generate your grocery list.</p>
+    </header>
+
+    <div class="planner-grid">
+      {% for day in week_days %}
+        <article class="planner-day-card">
+          <h3>{{ day.label }} <span>{{ day.date }}</span></h3>
+
+          {% for slot in ['lunch', 'dinner'] %}
+            <div class="planner-slot">
+              <div class="planner-slot-head">{{ slot|capitalize }}</div>
+              {% set entry = day[slot] %}
+              {% if entry %}
+                <div class="planner-entry">
+                  <span>{{ entry.meal_name }}</span>
+                  <form method="post" action="{{ url_for('planner.delete_entry', entry_id=entry.id, week_start=week_start) }}">
+                    <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+                  </form>
+                </div>
+              {% endif %}
+
+              <form method="post" action="{{ url_for('planner.add_entry', week_start=week_start) }}" class="planner-slot-form">
+                <input type="hidden" name="day_of_week" value="{{ day.index }}">
+                <input type="hidden" name="meal_slot" value="{{ slot }}">
+                <select name="mealdb_meal_id" class="form-control" required>
+                  <option value="">Select bookmarked meal</option>
+                  {% for meal in bookmarks %}
+                    <option value="{{ meal.mealdb_meal_id }}" data-name="{{ meal.meal_name }}" data-thumb="{{ meal.meal_thumb or '' }}">{{ meal.meal_name or meal.mealdb_meal_id }}</option>
+                  {% endfor %}
+                </select>
+                <input type="hidden" name="meal_name" value="">
+                <input type="hidden" name="meal_thumb" value="">
+                <button type="submit" class="btn btn-primary btn-sm">Save {{ slot }}</button>
+              </form>
+            </div>
+          {% endfor %}
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="planner-card planner-generate-card">
+    <header class="planner-card-head">
+      <h2>Generate grocery list</h2>
+      <p>Choose the days you want to shop for and we’ll merge duplicate ingredients where possible.</p>
+    </header>
+
+    <form method="post" action="{{ url_for('planner.generate_grocery', week_start=week_start) }}" class="planner-generate-form">
+      <div class="planner-day-checks">
+        {% for day in week_days %}
+          <label><input type="checkbox" name="day_of_week" value="{{ day.index }}"> {{ day.label }}</label>
+        {% endfor %}
+      </div>
+      <label class="planner-inline-check"><input type="checkbox" name="include_checked" value="yes"> Add generated items as already checked</label>
+      <button type="submit" class="btn btn-primary">Generate Grocery</button>
+    </form>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('.planner-slot-form').forEach((form) => {
+    const select = form.querySelector('select[name="mealdb_meal_id"]');
+    const nameInput = form.querySelector('input[name="meal_name"]');
+    const thumbInput = form.querySelector('input[name="meal_thumb"]');
+    form.addEventListener('submit', () => {
+      const option = select.options[select.selectedIndex];
+      nameInput.value = option?.dataset?.name || option?.textContent?.trim() || '';
+      thumbInput.value = option?.dataset?.thumb || '';
+    });
+  });
+</script>
+{% endblock %}
