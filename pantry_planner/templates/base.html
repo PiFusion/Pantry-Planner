@@ -15,6 +15,7 @@
     <a href="/bookmarks/">Bookmarks</a>
     {% if g.user %}
       <a href="/grocery/">Grocery List</a>
+      <a href="/planner/">Meal Planner</a>
     {% endif %}
     {% if g.user and g.user['role'] == 'admin' %}
       <a href="/admin/">Admin</a>
