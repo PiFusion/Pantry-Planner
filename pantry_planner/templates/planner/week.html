@@ -23,7 +23,7 @@
         <article class="planner-day-card">
           <h3>{{ day.label }} <span>{{ day.date }}</span></h3>
 
-          {% for slot in ['lunch', 'dinner'] %}
+          {% for slot in planner_slots %}
             <div class="planner-slot">
               <div class="planner-slot-head">{{ slot|capitalize }}</div>
               {% set entry = day[slot] %}

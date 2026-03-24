@@ -9,7 +9,7 @@ from .integrations.mealdb import lookup_meal
 bp = Blueprint("planner", __name__, url_prefix="/planner")
 
 DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-SLOTS = ["lunch", "dinner"]
+SLOTS = ["breakfast", "lunch", "dinner"]
 UNIT_ALIASES = {
     "pounds": "lb",
     "pound": "lb",
@@ -122,15 +122,14 @@ def week_view():
 
     week_days = []
     for idx, label in enumerate(DAY_LABELS):
-        week_days.append(
-            {
-                "index": idx,
-                "label": label,
-                "date": (week_start + timedelta(days=idx)).isoformat(),
-                "lunch": entry_map.get((idx, "lunch")),
-                "dinner": entry_map.get((idx, "dinner")),
-            }
-        )
+        day_payload = {
+            "index": idx,
+            "label": label,
+            "date": (week_start + timedelta(days=idx)).isoformat(),
+        }
+        for slot in SLOTS:
+            day_payload[slot] = entry_map.get((idx, slot))
+        week_days.append(day_payload)
 
     return render_template(
         "planner/week.html",
@@ -139,6 +138,7 @@ def week_view():
         next_week=(week_start + timedelta(days=7)).isoformat(),
         week_days=week_days,
         bookmarks=bookmarks,
+        planner_slots=SLOTS,
     )
 
 

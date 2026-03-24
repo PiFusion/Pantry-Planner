@@ -411,12 +411,13 @@ button { cursor: pointer; }
 .planner-day-checks label,
 .planner-inline-check { display: inline-flex; align-items: center; gap: 0.35rem; color: #4c4037; }
 
-.selected-ingredient-row { align-items: flex-start; }
+.selected-ingredient-row { display: grid; grid-template-columns: minmax(130px, 1fr) 200px auto; align-items: start; gap: 0.55rem; }
+.selected-ingredient-row .ingredient-main { min-width: 0; }
 .expiry-form { display: grid; gap: 0.35rem; min-width: 190px; }
-.expiry-form label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.25rem; }
+.expiry-form label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.25rem; margin-bottom: 0.1rem; }
 .expiry-form .form-control { font-size: 0.84rem; padding: 0.42rem 0.55rem; background: #fff; }
 
 @media (max-width: 900px) {
   .planner-grid { grid-template-columns: 1fr; }
-  .selected-ingredient-row { flex-direction: column; }
+  .selected-ingredient-row { grid-template-columns: 1fr; }
 }
