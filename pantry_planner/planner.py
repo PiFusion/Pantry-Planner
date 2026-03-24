@@ -131,9 +131,13 @@ def week_view():
             day_payload[slot] = entry_map.get((idx, slot))
         week_days.append(day_payload)
 
+    week_end = week_start + timedelta(days=6)
+    week_label = f"{week_start.strftime('%b')} {week_start.day} – {week_end.strftime('%b')} {week_end.day}"
+
     return render_template(
         "planner/week.html",
         week_start=week_start.isoformat(),
+        week_label=week_label,
         prev_week=(week_start - timedelta(days=7)).isoformat(),
         next_week=(week_start + timedelta(days=7)).isoformat(),
         week_days=week_days,

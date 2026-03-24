@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from flask import Blueprint, render_template, request, redirect, url_for, session, g, jsonify
 from .db import get_db
 
@@ -13,6 +15,41 @@ def _get_selected_ids():
 
 def _set_selected_ids(id_set):
     session["selected_ingredient_ids"] = sorted(list(id_set))
+
+
+
+
+def _ingredient_category(name: str) -> str:
+    lower = (name or "").lower()
+    spice_keywords = ("pepper", "spice", "cinnamon", "allspice", "paprika", "seasoning")
+    if any(k in lower for k in spice_keywords):
+        return "Spice"
+    return "Pantry"
+
+
+def _expiry_status(expires_on: str | None):
+    if not expires_on:
+        return None
+
+    try:
+        expiry_date = datetime.strptime(expires_on, "%Y-%m-%d").date()
+    except ValueError:
+        return {"kind": "neutral", "text": "Invalid date"}
+
+    today = date.today()
+    delta_days = (expiry_date - today).days
+
+    if delta_days < 0:
+        days_ago = abs(delta_days)
+        label = "day" if days_ago == 1 else "days"
+        return {"kind": "expired", "text": f"Expired {days_ago} {label} ago"}
+
+    if delta_days <= 3:
+        label = "day" if delta_days == 1 else "days"
+        return {"kind": "soon", "text": f"Expires in {delta_days} {label}"}
+
+    pretty = expiry_date.strftime("%b %d, %Y").replace(" 0", " ")
+    return {"kind": "fresh", "text": f"Expires {pretty}"}
 
 
 def _load_filtered_ingredients(q: str):
@@ -44,7 +81,16 @@ def _selected_ingredients_for_current_user():
             """,
             (g.user["id"],),
         ).fetchall()
-        selected_ingredients = [{"id": r["id"], "name": r["name"], "expires_on": r["expires_on"]} for r in rows]
+        selected_ingredients = [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "expires_on": r["expires_on"],
+                "category": _ingredient_category(r["name"]),
+                "expiry_status": _expiry_status(r["expires_on"]),
+            }
+            for r in rows
+        ]
         selected_ids = {r["id"] for r in rows}
         return selected_ingredients, selected_ids
 
@@ -63,7 +109,13 @@ def _selected_ingredients_for_current_user():
         list(selected_ids),
     ).fetchall()
 
-    selected_ingredients = [{"id": r["id"], "name": r["name"], "expires_on": None} for r in rows]
+    selected_ingredients = [{
+        "id": r["id"],
+        "name": r["name"],
+        "expires_on": None,
+        "category": _ingredient_category(r["name"]),
+        "expiry_status": None,
+    } for r in rows]
     normalized_ids = {r["id"] for r in rows}
     return selected_ingredients, normalized_ids
 

@@ -4,28 +4,30 @@
 {% block content %}
 <div class="page planner-page">
   <div class="planner-head">
-    <h1>Weekly Meal Planner</h1>
-    <div class="planner-nav">
-      <a class="btn btn-ghost" href="{{ url_for('planner.week_view', week_start=prev_week) }}">← Previous</a>
-      <span class="planner-week-label">Week of {{ week_start }}</span>
-      <a class="btn btn-ghost" href="{{ url_for('planner.week_view', week_start=next_week) }}">Next →</a>
+    <div>
+      <h1>Weekly Meal Planner</h1>
+      <p class="planner-subtitle">Pick bookmarked meals for breakfast, lunch, and dinner, then auto-generate your grocery list.</p>
+    </div>
+
+    <div class="planner-week-pill">
+      <a class="planner-week-nav" href="{{ url_for('planner.week_view', week_start=prev_week) }}" aria-label="Previous week">←</a>
+      <span>{{ week_label }}</span>
+      <a class="planner-week-nav" href="{{ url_for('planner.week_view', week_start=next_week) }}" aria-label="Next week">→</a>
     </div>
   </div>
 
   <section class="planner-card">
-    <header class="planner-card-head">
-      <h2>Plan your meals</h2>
-      <p>Pick bookmarked meals for lunch and dinner, then auto-generate your grocery list.</p>
-    </header>
-
     <div class="planner-grid">
       {% for day in week_days %}
         <article class="planner-day-card">
-          <h3>{{ day.label }} <span>{{ day.date }}</span></h3>
+          <h3>{{ day.label }} <span>{{ day.date[5:7] | int }}/{{ day.date[8:10] | int }}</span></h3>
 
           {% for slot in planner_slots %}
             <div class="planner-slot">
-              <div class="planner-slot-head">{{ slot|capitalize }}</div>
+              <div class="planner-slot-head">
+                {% if slot == 'breakfast' %}☀️{% elif slot == 'lunch' %}🥗{% else %}🌙{% endif %}
+                {{ slot|upper }}
+              </div>
               {% set entry = day[slot] %}
               {% if entry %}
                 <div class="planner-entry">
@@ -63,13 +65,16 @@
     </header>
 
     <form method="post" action="{{ url_for('planner.generate_grocery', week_start=week_start) }}" class="planner-generate-form">
-      <div class="planner-day-checks">
+      <div class="planner-day-pills">
         {% for day in week_days %}
-          <label><input type="checkbox" name="day_of_week" value="{{ day.index }}"> {{ day.label }}</label>
+          <label class="day-pill">
+            <input type="checkbox" name="day_of_week" value="{{ day.index }}" checked>
+            <span>✓ {{ day.label }}</span>
+          </label>
         {% endfor %}
       </div>
       <label class="planner-inline-check"><input type="checkbox" name="include_checked" value="yes"> Add generated items as already checked</label>
-      <button type="submit" class="btn btn-primary">Generate Grocery</button>
+      <button type="submit" class="btn btn-primary planner-cta">Generate Grocery</button>
     </form>
   </section>
 </div>
