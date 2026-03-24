@@ -36,7 +36,7 @@ def _selected_ingredients_for_current_user():
     if g.user:
         rows = db.execute(
             """
-            SELECT i.id, i.name
+            SELECT i.id, i.name, p.expires_on
             FROM pantry_items p
             JOIN ingredients i ON i.id = p.ingredient_id
             WHERE p.user_id = ? AND i.hidden = 0
@@ -44,7 +44,7 @@ def _selected_ingredients_for_current_user():
             """,
             (g.user["id"],),
         ).fetchall()
-        selected_ingredients = [{"id": r["id"], "name": r["name"]} for r in rows]
+        selected_ingredients = [{"id": r["id"], "name": r["name"], "expires_on": r["expires_on"]} for r in rows]
         selected_ids = {r["id"] for r in rows}
         return selected_ingredients, selected_ids
 
@@ -63,7 +63,7 @@ def _selected_ingredients_for_current_user():
         list(selected_ids),
     ).fetchall()
 
-    selected_ingredients = [{"id": r["id"], "name": r["name"]} for r in rows]
+    selected_ingredients = [{"id": r["id"], "name": r["name"], "expires_on": None} for r in rows]
     normalized_ids = {r["id"] for r in rows}
     return selected_ingredients, normalized_ids
 
@@ -110,7 +110,7 @@ def _toggle_by_id(ingredient_id: int):
             action = "removed"
         else:
             db.execute(
-                "INSERT INTO pantry_items (user_id, ingredient_id) VALUES (?, ?)",
+                "INSERT INTO pantry_items (user_id, ingredient_id, added_on) VALUES (?, ?, date('now'))",
                 (g.user["id"], ingredient_id),
             )
         db.commit()
@@ -183,3 +183,26 @@ def clear_ingredients_async():
         _set_selected_ids(set())
 
     return jsonify({"ok": True, "selected_count": 0})
+
+
+@bp.post("/ingredients/expiry/<int:ingredient_id>")
+def update_expiry(ingredient_id):
+    if g.user is None:
+        return redirect(url_for("auth.login"))
+
+    expires_on = (request.form.get("expires_on") or "").strip()
+    if not expires_on:
+        expires_on = None
+
+    db = get_db()
+    db.execute(
+        """
+        UPDATE pantry_items
+        SET expires_on = ?
+        WHERE user_id = ? AND ingredient_id = ?
+        """,
+        (expires_on, g.user["id"], ingredient_id),
+    )
+    db.commit()
+
+    return redirect(url_for("pantry.ingredients", q=request.form.get("return_q", "")))

@@ -7,6 +7,43 @@ from .db import get_db
 
 bp = Blueprint("grocery", __name__, url_prefix="/grocery")
 
+UNIT_ALIASES = {
+    "pounds": "lb",
+    "pound": "lb",
+    "lbs": "lb",
+    "ounces": "oz",
+    "ounce": "oz",
+    "grams": "g",
+    "gram": "g",
+    "kilograms": "kg",
+    "kilogram": "kg",
+    "tablespoons": "tbsp",
+    "tablespoon": "tbsp",
+    "teaspoons": "tsp",
+    "teaspoon": "tsp",
+    "cups": "cup",
+    "bags": "bag",
+    "counts": "ct",
+}
+
+
+def _parse_quantity(raw_quantity: str):
+    text = (raw_quantity or "").strip()
+    if not text:
+        return None, None, None, None
+
+    parts = text.split()
+    try:
+        amount = float(parts[0])
+    except ValueError:
+        return text, None, None, "unparsed"
+
+    unit = " ".join(parts[1:]).lower().strip() if len(parts) > 1 else ""
+    if unit in UNIT_ALIASES:
+        unit = UNIT_ALIASES[unit]
+
+    return text, amount, (unit or None), ("parsed" if unit else "parsed")
+
 
 def login_required(view):
     @wraps(view)
@@ -29,12 +66,24 @@ def _normalized_quantity(quantity: str, unit: str):
 
 def _insert_item_for_user(item_name: str, quantity: str | None, notes: str | None):
     db = get_db()
+    raw_quantity, amount, unit, parse_status = _parse_quantity(quantity or "")
     db.execute(
         """
-        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO grocery_items (
+          user_id, item_name, quantity, quantity_amount, quantity_unit, quantity_unit_normalized, quantity_parse_status, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (g.user["id"], item_name, quantity or None, notes or None),
+        (
+            g.user["id"],
+            item_name,
+            raw_quantity,
+            amount,
+            unit,
+            unit,
+            parse_status,
+            notes or None,
+        ),
     )
     db.commit()
 
@@ -120,13 +169,19 @@ def update_item(item_id):
     notes = request.form.get("notes", "").strip()
 
     db = get_db()
+    raw_quantity, amount, unit, parse_status = _parse_quantity(quantity)
     db.execute(
         """
         UPDATE grocery_items
-        SET quantity = ?, notes = ?
+        SET quantity = ?,
+            quantity_amount = ?,
+            quantity_unit = ?,
+            quantity_unit_normalized = ?,
+            quantity_parse_status = ?,
+            notes = ?
         WHERE id = ? AND user_id = ?
         """,
-        (quantity or None, notes or None, item_id, g.user["id"]),
+        (raw_quantity, amount, unit, unit, parse_status, notes or None, item_id, g.user["id"]),
     )
     db.commit()
     flash("Item details updated.")
