@@ -42,7 +42,8 @@ def _insert_item_for_user(item_name: str, quantity: str | None, notes: str | Non
 @bp.get("/")
 @login_required
 def list_items():
-    ingredient_q = request.args.get("ingredient_q", "").strip().lower()
+    ingredient_q = request.args.get("ingredient_q", "").strip()
+    ingredient_q_lower = ingredient_q.lower()
     ingredient_rows = get_db().execute(
         """
         SELECT name
@@ -52,9 +53,9 @@ def list_items():
         """
     ).fetchall()
     all_ingredients = [r["name"] for r in ingredient_rows]
-    ingredient_suggestions = all_ingredients
-    if ingredient_q:
-        ingredient_suggestions = [n for n in all_ingredients if ingredient_q in n.lower()]
+    ingredient_suggestions = []
+    if ingredient_q_lower:
+        ingredient_suggestions = [n for n in all_ingredients if ingredient_q_lower in n.lower()][:8]
 
     rows = get_db().execute(
         """
@@ -69,6 +70,19 @@ def list_items():
     to_buy = [r for r in rows if not r["is_checked"]]
     checked = [r for r in rows if r["is_checked"]]
 
+    recent_rows = get_db().execute(
+        """
+        SELECT item_name
+        FROM grocery_items
+        WHERE user_id = ?
+        GROUP BY item_name
+        ORDER BY MAX(created_at) DESC
+        LIMIT 5
+        """,
+        (g.user["id"],),
+    ).fetchall()
+    recent_ingredients = [r["item_name"] for r in recent_rows]
+
     return render_template(
         "grocery/list.html",
         items=rows,
@@ -77,7 +91,9 @@ def list_items():
         total_count=len(rows),
         checked_count=len(checked),
         ingredient_q=ingredient_q,
-        ingredient_suggestions=ingredient_suggestions[:30],
+        ingredient_total=len(all_ingredients),
+        ingredient_catalog=all_ingredients,
+        ingredient_suggestions=ingredient_suggestions,
     )
 
 
@@ -94,6 +110,26 @@ def add_item():
 
     _insert_item_for_user(item_name, quantity, notes)
     flash("Added to grocery list.")
+    return redirect(url_for("grocery.list_items"))
+
+
+@bp.post("/update/<int:item_id>")
+@login_required
+def update_item(item_id):
+    quantity = request.form.get("quantity", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    db = get_db()
+    db.execute(
+        """
+        UPDATE grocery_items
+        SET quantity = ?, notes = ?
+        WHERE id = ? AND user_id = ?
+        """,
+        (quantity or None, notes or None, item_id, g.user["id"]),
+    )
+    db.commit()
+    flash("Item details updated.")
     return redirect(url_for("grocery.list_items"))
 
 
