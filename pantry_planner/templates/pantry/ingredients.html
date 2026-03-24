@@ -86,6 +86,17 @@
               {% endif %}
             </div>
 
+            {% if g.user %}
+              <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form">
+                <input type="hidden" name="return_q" value="{{ q }}">
+                <label>
+                  Expiry
+                  <input type="date" name="expires_on" class="form-control" value="{{ ing.expires_on or '' }}">
+                </label>
+                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+              </form>
+            {% endif %}
+
             <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
               <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
               <input type="hidden" name="return_q" value="{{ q }}">
