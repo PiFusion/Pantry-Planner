@@ -425,13 +425,15 @@ button { cursor: pointer; }
 .selected-panel-head { align-items: center; }
 .selected-panel-subtitle { font-size: 1.8rem; color: #78695e; margin-top: 0.25rem; }
 .selected-count-pill { background: #c3a678; color: #fff; border-radius: 16px; min-width: 46px; min-height: 46px; display: grid; place-items: center; }
+.selected-list { max-height: none; overflow: visible; }
 .selected-main-wrap { display: grid; gap: 0.45rem; min-width: 0; }
-.selected-ingredient-row { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 0.55rem; border-bottom: 1px solid var(--border); }
+.selected-ingredient-row { display: grid; grid-template-columns: 1fr; align-items: start; gap: 0.55rem; border-bottom: 1px solid var(--border); padding-block: 0.95rem; }
 .selected-ingredient-row .ingredient-main { align-items: flex-start; }
 .selected-ingredient-row .ingredient-main > div { min-width: 0; }
 .ingredient-category { color: #8a786b; font-size: 1.35rem; line-height: 1.15; margin-top: 0.1rem; }
-.expiry-form { display: grid; gap: 0.35rem; min-width: 240px; }
+.expiry-form { display: grid; gap: 0.35rem; min-width: 240px; max-width: 420px; }
 .expiry-form .form-control { font-size: 1.15rem; padding: 0.52rem 0.6rem; background: #fff; }
+.expiry-input { border-radius: 12px; }
 .expiry-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.18rem 0.62rem; font-size: 1.3rem; width: fit-content; }
 .expiry-badge.fresh { background: #eceadf; color: #6f654e; }
 .expiry-badge.soon { background: #f5e6c7; color: #8a6525; }

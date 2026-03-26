@@ -73,35 +73,15 @@
               </div>
 
               {% if g.user %}
-                <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form">
+                <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form" data-auto-submit="true">
                   <input type="hidden" name="return_q" value="{{ q }}">
-                  <label>
-                    <input type="date" name="expires_on" class="form-control" value="{{ ing.expires_on or '' }}">
-                  </label>
-                  <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+                  <input type="date" name="expires_on" class="form-control expiry-input" value="{{ ing.expires_on or '' }}">
                   {% if ing.expiry_status %}
-                    <span class="expiry-badge {{ ing.expiry_status.kind }}">{{ ing.expiry_status.text }}</span>
+                    <span class="expiry-badge {{ ing.expiry_status.kind }}">✓ {{ ing.expiry_status.text }}</span>
                   {% endif %}
                 </form>
               {% endif %}
             </div>
-
-            {% if g.user %}
-              <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form">
-                <input type="hidden" name="return_q" value="{{ q }}">
-                <label>
-                  Expiry
-                  <input type="date" name="expires_on" class="form-control" value="{{ ing.expires_on or '' }}">
-                </label>
-                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
-              </form>
-            {% endif %}
-
-            <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
-              <input type="hidden" name="return_q" value="{{ q }}">
-              <button type="submit" class="ingredient-remove" aria-label="Remove {{ ing.name }}">×</button>
-            </form>
           </li>
         {% else %}
           <li class="ingredient-empty" id="selectedEmpty">No selected ingredients yet.</li>
@@ -189,6 +169,18 @@ function buildThumb(name) {
   return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
 }
 
+
+
+document.addEventListener('change', (e) => {
+  const input = e.target;
+  if (!(input instanceof HTMLInputElement)) return;
+  if (!input.matches('.expiry-form input[name="expires_on"]')) return;
+
+  const form = input.closest('.expiry-form');
+  if (!form) return;
+  form.submit();
+});
+
 if (localSearch) {
   localSearch.addEventListener('input', () => {
     const q = localSearch.value.trim().toLowerCase();
@@ -208,12 +200,11 @@ function selectedRowMarkup(id, name) {
           <p class="ingredient-category">Pantry</p>
         </div>
       </div>
+      <form method="post" action="/ingredients/expiry/${id}" class="expiry-form" data-auto-submit="true">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <input type="date" name="expires_on" class="form-control expiry-input" value="">
+      </form>
     </div>
-    <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-      <input type="hidden" name="ingredient_id" value="${id}">
-      <input type="hidden" name="return_q" value="${returnQ}">
-      <button type="submit" class="ingredient-remove" aria-label="Remove ${name}">×</button>
-    </form>
   `;
 }
 
