@@ -7,6 +7,43 @@ from .db import get_db
 
 bp = Blueprint("grocery", __name__, url_prefix="/grocery")
 
+UNIT_ALIASES = {
+    "pounds": "lb",
+    "pound": "lb",
+    "lbs": "lb",
+    "ounces": "oz",
+    "ounce": "oz",
+    "grams": "g",
+    "gram": "g",
+    "kilograms": "kg",
+    "kilogram": "kg",
+    "tablespoons": "tbsp",
+    "tablespoon": "tbsp",
+    "teaspoons": "tsp",
+    "teaspoon": "tsp",
+    "cups": "cup",
+    "bags": "bag",
+    "counts": "ct",
+}
+
+
+def _parse_quantity(raw_quantity: str):
+    text = (raw_quantity or "").strip()
+    if not text:
+        return None, None, None, None
+
+    parts = text.split()
+    try:
+        amount = float(parts[0])
+    except ValueError:
+        return text, None, None, "unparsed"
+
+    unit = " ".join(parts[1:]).lower().strip() if len(parts) > 1 else ""
+    if unit in UNIT_ALIASES:
+        unit = UNIT_ALIASES[unit]
+
+    return text, amount, (unit or None), ("parsed" if unit else "parsed")
+
 
 def login_required(view):
     @wraps(view)
@@ -29,12 +66,24 @@ def _normalized_quantity(quantity: str, unit: str):
 
 def _insert_item_for_user(item_name: str, quantity: str | None, notes: str | None):
     db = get_db()
+    raw_quantity, amount, unit, parse_status = _parse_quantity(quantity or "")
     db.execute(
         """
-        INSERT INTO grocery_items (user_id, item_name, quantity, notes)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO grocery_items (
+          user_id, item_name, quantity, quantity_amount, quantity_unit, quantity_unit_normalized, quantity_parse_status, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (g.user["id"], item_name, quantity or None, notes or None),
+        (
+            g.user["id"],
+            item_name,
+            raw_quantity,
+            amount,
+            unit,
+            unit,
+            parse_status,
+            notes or None,
+        ),
     )
     db.commit()
 
@@ -42,7 +91,8 @@ def _insert_item_for_user(item_name: str, quantity: str | None, notes: str | Non
 @bp.get("/")
 @login_required
 def list_items():
-    ingredient_q = request.args.get("ingredient_q", "").strip().lower()
+    ingredient_q = request.args.get("ingredient_q", "").strip()
+    ingredient_q_lower = ingredient_q.lower()
     ingredient_rows = get_db().execute(
         """
         SELECT name
@@ -52,9 +102,9 @@ def list_items():
         """
     ).fetchall()
     all_ingredients = [r["name"] for r in ingredient_rows]
-    ingredient_suggestions = all_ingredients
-    if ingredient_q:
-        ingredient_suggestions = [n for n in all_ingredients if ingredient_q in n.lower()]
+    ingredient_suggestions = []
+    if ingredient_q_lower:
+        ingredient_suggestions = [n for n in all_ingredients if ingredient_q_lower in n.lower()][:8]
 
     rows = get_db().execute(
         """
@@ -77,7 +127,9 @@ def list_items():
         total_count=len(rows),
         checked_count=len(checked),
         ingredient_q=ingredient_q,
-        ingredient_suggestions=ingredient_suggestions[:30],
+        ingredient_total=len(all_ingredients),
+        ingredient_catalog=all_ingredients,
+        ingredient_suggestions=ingredient_suggestions,
     )
 
 
@@ -94,6 +146,32 @@ def add_item():
 
     _insert_item_for_user(item_name, quantity, notes)
     flash("Added to grocery list.")
+    return redirect(url_for("grocery.list_items"))
+
+
+@bp.post("/update/<int:item_id>")
+@login_required
+def update_item(item_id):
+    quantity = request.form.get("quantity", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    db = get_db()
+    raw_quantity, amount, unit, parse_status = _parse_quantity(quantity)
+    db.execute(
+        """
+        UPDATE grocery_items
+        SET quantity = ?,
+            quantity_amount = ?,
+            quantity_unit = ?,
+            quantity_unit_normalized = ?,
+            quantity_parse_status = ?,
+            notes = ?
+        WHERE id = ? AND user_id = ?
+        """,
+        (raw_quantity, amount, unit, unit, parse_status, notes or None, item_id, g.user["id"]),
+    )
+    db.commit()
+    flash("Item details updated.")
     return redirect(url_for("grocery.list_items"))
 
 
