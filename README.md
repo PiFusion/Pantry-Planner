@@ -258,6 +258,40 @@ Recommended environment:
 - SQLite
 - modern web browser
 
+---
+
+# DevOps Talking Points 
+
+If someone asks about DevOps for Pantry Planner, you can describe it in four layers:
+
+## 1) Source control and delivery workflow
+
+- GitHub is used for version control with feature branches and pull requests.
+- Changes are reviewed before merge, then validated by automated tests.
+- This creates a repeatable path from local development to stable releases.
+
+## 2) CI and quality gates
+
+- GitHub Actions runs automated test checks.
+- Test automation helps catch regressions early before deployment.
+- The same checks can be run locally (`pytest` / `unittest`) to keep dev and CI behavior aligned.
+
+## 3) Environment strategy
+
+- **Current state:** local development with Flask + SQLite.
+- **Production recommendation:** deploy Flask behind Gunicorn and move persistence to managed PostgreSQL.
+- Keep environment-specific settings in environment variables (`SECRET_KEY`, database URL, debug flags).
+
+## 4) Operations and reliability
+
+- Database initialization/migrations should run as part of deployment.
+- Basic observability should include: request logs, error tracking, and uptime checks.
+- Backups and restore testing are essential once production data exists.
+
+## Example one-minute DevOps answer
+
+“For DevOps, Pantry Planner uses GitHub-based collaboration with PR reviews and CI test checks to protect main. We develop locally in Flask, and the production path is containerized Flask/Gunicorn with environment variables and a managed Postgres database. Deployments run database migrations, and we monitor logs, uptime, and backups so the app is reliable and recoverable.”
+
 The application currently runs locally using the Flask development server.
 
 ---
