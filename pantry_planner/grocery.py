@@ -119,6 +119,19 @@ def list_items():
     to_buy = [r for r in rows if not r["is_checked"]]
     checked = [r for r in rows if r["is_checked"]]
 
+    recent_rows = get_db().execute(
+        """
+        SELECT item_name
+        FROM grocery_items
+        WHERE user_id = ?
+        GROUP BY item_name
+        ORDER BY MAX(created_at) DESC
+        LIMIT 5
+        """,
+        (g.user["id"],),
+    ).fetchall()
+    recent_ingredients = [r["item_name"] for r in recent_rows]
+
     return render_template(
         "grocery/list.html",
         items=rows,
