@@ -260,7 +260,7 @@ Recommended environment:
 
 ---
 
-# DevOps Talking Points (Interview / Demo Friendly)
+# DevOps Talking Points 
 
 If someone asks about DevOps for Pantry Planner, you can describe it in four layers:
 
