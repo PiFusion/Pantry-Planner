@@ -46,6 +46,33 @@ The application integrates with **TheMealDB API** to retrieve recipe information
 
 ---
 
+# DevOps Workflow
+
+## Branching and Pull Requests
+
+- Create feature branches from `main` using `feature/<short-description>`.
+- Open a pull request early and keep it up to date with your branch.
+- If a PR was updated outside Codex and cannot be updated in-place, create a **new PR** from the latest branch state.
+
+## GitHub Project Board
+
+We use the GitHub Project board to track delivery status across the sprint.
+
+- **Backlog**: work not started
+- **Ready**: work scoped and ready to pick up
+- **In progress**: actively being developed
+- **In review**: awaiting or undergoing review
+- **Done**: completed and merged
+
+When opening or updating a PR:
+
+- link the related issue/task card
+- move the card to **In progress** when coding starts
+- move it to **In review** when PR is ready
+- move it to **Done** after merge
+
+---
+
 # Quickstart
 
 ## 1. Clone the Repository
