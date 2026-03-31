@@ -451,8 +451,11 @@ Testing was performed using **PyTest and unittest**.
 - 
 ## Running Tests
 Detailed test:
+
 python -m unittest discover -s tests -v
+
 Quick test:
+
 python -m pytest tests/test_app.py
 
 ---
@@ -494,11 +497,7 @@ A task is complete when:
 - pull request is reviewed and merged
 
 ---
-# Running Tests
 
-python -m unittest discover -s tests -v
-
----
 
 # Team Members
 
