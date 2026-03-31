@@ -315,10 +315,6 @@ If someone asks about DevOps for Pantry Planner, you can describe it in four lay
 - Basic observability should include: request logs, error tracking, and uptime checks.
 - Backups and restore testing are essential once production data exists.
 
-## Example one-minute DevOps answer
-
-“For DevOps, Pantry Planner uses GitHub-based collaboration with PR reviews and CI test checks to protect main. We develop locally in Flask, and the production path is containerized Flask/Gunicorn with environment variables and a managed Postgres database. Deployments run database migrations, and we monitor logs, uptime, and backups so the app is reliable and recoverable.”
-
 The application currently runs locally using the Flask development server.
 
 ---
@@ -452,11 +448,12 @@ Testing was performed using **PyTest and unittest**.
 - route testing for Flask endpoints
 - authentication tests
 - database interaction tests
-
+- 
 ## Running Tests
-
+Detailed test:
 python -m unittest discover -s tests -v
-
+Quick test:
+python -m pytest tests/test_app.py
 
 ---
 
