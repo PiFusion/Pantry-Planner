@@ -46,6 +46,33 @@ The application integrates with **TheMealDB API** to retrieve recipe information
 
 ---
 
+# DevOps Workflow
+
+## Branching and Pull Requests
+
+- Create feature branches from `main` using `feature/<short-description>`.
+- Open a pull request early and keep it up to date with your branch.
+- If a PR was updated outside Codex and cannot be updated in-place, create a **new PR** from the latest branch state.
+
+## GitHub Project Board
+
+We use the GitHub Project board to track delivery status across the sprint.
+
+- **Backlog**: work not started
+- **Ready**: work scoped and ready to pick up
+- **In progress**: actively being developed
+- **In review**: awaiting or undergoing review
+- **Done**: completed and merged
+
+When opening or updating a PR:
+
+- link the related issue/task card
+- move the card to **In progress** when coding starts
+- move it to **In review** when PR is ready
+- move it to **Done** after merge
+
+---
+
 # Quickstart
 
 ## 1. Clone the Repository
@@ -258,6 +285,36 @@ Recommended environment:
 - SQLite
 - modern web browser
 
+---
+
+# DevOps Talking Points 
+
+If someone asks about DevOps for Pantry Planner, you can describe it in four layers:
+
+## 1) Source control and delivery workflow
+
+- GitHub is used for version control with feature branches and pull requests.
+- Changes are reviewed before merge, then validated by automated tests.
+- This creates a repeatable path from local development to stable releases.
+
+## 2) CI and quality gates
+
+- GitHub Actions runs automated test checks.
+- Test automation helps catch regressions early before deployment.
+- The same checks can be run locally (`pytest` / `unittest`) to keep dev and CI behavior aligned.
+
+## 3) Environment strategy
+
+- **Current state:** local development with Flask + SQLite.
+- **Production recommendation:** deploy Flask behind Gunicorn and move persistence to managed PostgreSQL.
+- Keep environment-specific settings in environment variables (`SECRET_KEY`, database URL, debug flags).
+
+## 4) Operations and reliability
+
+- Database initialization/migrations should run as part of deployment.
+- Basic observability should include: request logs, error tracking, and uptime checks.
+- Backups and restore testing are essential once production data exists.
+
 The application currently runs locally using the Flask development server.
 
 ---
@@ -391,11 +448,15 @@ Testing was performed using **PyTest and unittest**.
 - route testing for Flask endpoints
 - authentication tests
 - database interaction tests
-
+- 
 ## Running Tests
+Detailed test:
 
 python -m unittest discover -s tests -v
 
+Quick test:
+
+python -m pytest tests/test_app.py
 
 ---
 
@@ -436,11 +497,7 @@ A task is complete when:
 - pull request is reviewed and merged
 
 ---
-# Running Tests
 
-python -m unittest discover -s tests -v
-
----
 
 # Team Members
 

@@ -45,42 +45,43 @@
       </ul>
     </section>
 
-    <aside class="panel-card">
-      <div class="panel-title panel-title-split">
-        <span>Selected Ingredients</span>
-        <span class="count" id="selectedCountHeader">{{ selected_count }}</span>
+    <aside class="panel-card selected-panel-card">
+      <div class="panel-title panel-title-split selected-panel-head">
+        <div>
+          <span>Selected Ingredients</span>
+          <p class="selected-panel-subtitle">Track what you already have</p>
+        </div>
+        <span class="count selected-count-pill" id="selectedCountHeader">{{ selected_count }}</span>
       </div>
 
       <ul class="ingredient-picker-list selected-list" id="selectedList">
         {% for ing in selected_ingredients %}
           <li class="ingredient-row selected-ingredient-row" data-id="{{ ing.id }}" data-name="{{ ing.name|lower }}">
-            <div class="ingredient-main">
-              <img
-                class="ingredient-thumb"
-                src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
-                alt="{{ ing.name }}"
-                loading="lazy"
-                onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
-              >
-              <span>{{ ing.name }}</span>
+            <div class="selected-main-wrap">
+              <div class="ingredient-main">
+                <img
+                  class="ingredient-thumb"
+                  src="https://www.themealdb.com/images/ingredients/{{ ing.name|replace(' ', '%20') }}-Small.png"
+                  alt="{{ ing.name }}"
+                  loading="lazy"
+                  onerror="this.src='https://www.themealdb.com/images/ingredients/Chicken-Small.png'"
+                >
+                <div>
+                  <span>{{ ing.name }}</span>
+                  <p class="ingredient-category">{{ ing.category }}</p>
+                </div>
+              </div>
+
+              {% if g.user %}
+                <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form" data-auto-submit="true">
+                  <input type="hidden" name="return_q" value="{{ q }}">
+                  <input type="date" name="expires_on" class="form-control expiry-input" value="{{ ing.expires_on or '' }}">
+                  {% if ing.expiry_status %}
+                    <span class="expiry-badge {{ ing.expiry_status.kind }}">✓ {{ ing.expiry_status.text }}</span>
+                  {% endif %}
+                </form>
+              {% endif %}
             </div>
-
-            {% if g.user %}
-              <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form">
-                <input type="hidden" name="return_q" value="{{ q }}">
-                <label>
-                  Expiry
-                  <input type="date" name="expires_on" class="form-control" value="{{ ing.expires_on or '' }}">
-                </label>
-                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
-              </form>
-            {% endif %}
-
-            <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-              <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
-              <input type="hidden" name="return_q" value="{{ q }}">
-              <button type="submit" class="ingredient-remove" aria-label="Remove {{ ing.name }}">×</button>
-            </form>
           </li>
         {% else %}
           <li class="ingredient-empty" id="selectedEmpty">No selected ingredients yet.</li>
@@ -168,6 +169,18 @@ function buildThumb(name) {
   return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(name)}-Small.png`;
 }
 
+
+
+document.addEventListener('change', (e) => {
+  const input = e.target;
+  if (!(input instanceof HTMLInputElement)) return;
+  if (!input.matches('.expiry-form input[name="expires_on"]')) return;
+
+  const form = input.closest('.expiry-form');
+  if (!form) return;
+  form.submit();
+});
+
 if (localSearch) {
   localSearch.addEventListener('input', () => {
     const q = localSearch.value.trim().toLowerCase();
@@ -179,15 +192,19 @@ if (localSearch) {
 
 function selectedRowMarkup(id, name) {
   return `
-    <div class="ingredient-main">
-      <img class="ingredient-thumb" src="${buildThumb(name)}" alt="${name}" loading="lazy">
-      <span>${name}</span>
+    <div class="selected-main-wrap">
+      <div class="ingredient-main">
+        <img class="ingredient-thumb" src="${buildThumb(name)}" alt="${name}" loading="lazy">
+        <div>
+          <span>${name}</span>
+          <p class="ingredient-category">Pantry</p>
+        </div>
+      </div>
+      <form method="post" action="/ingredients/expiry/${id}" class="expiry-form" data-auto-submit="true">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <input type="date" name="expires_on" class="form-control expiry-input" value="">
+      </form>
     </div>
-    <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form">
-      <input type="hidden" name="ingredient_id" value="${id}">
-      <input type="hidden" name="return_q" value="${returnQ}">
-      <button type="submit" class="ingredient-remove" aria-label="Remove ${name}">×</button>
-    </form>
   `;
 }
 
