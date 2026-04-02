@@ -113,6 +113,33 @@ Open in browser:
 
 http://127.0.0.1:5000/ingredients
 
+---
+
+# Deployment Notes (Render/AWS/App hosts)
+
+If you see an **Internal Server Error (500)** on hosted environments but not locally, the most common cause is an uninitialized database.
+
+Required setup commands:
+
+flask --app pantry_planner init-db
+flask --app pantry_planner sync-ingredients
+
+For platforms that do not support pre-deploy jobs on free tiers, include initialization in the start command:
+
+flask --app pantry_planner init-db && flask --app pantry_planner sync-ingredients && flask --app pantry_planner run --host 0.0.0.0 --port $PORT
+
+---
+
+# Running Tests
+
+From the repository root:
+
+PYTHONPATH=. pytest -q
+
+If your CI currently runs `unittest`, use:
+
+python -m unittest discover -s tests -p "test_*.py"
+
 
 ---
 
