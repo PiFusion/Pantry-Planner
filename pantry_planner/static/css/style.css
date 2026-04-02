@@ -430,6 +430,8 @@ button { cursor: pointer; }
 .selected-ingredient-row { display: grid; grid-template-columns: 1fr; align-items: start; gap: 0.55rem; border-bottom: 1px solid var(--border); padding-block: 0.95rem; }
 .selected-ingredient-row .ingredient-main { align-items: flex-start; }
 .selected-ingredient-row .ingredient-main > div { min-width: 0; }
+.selected-remove-form { justify-self: end; }
+.selected-remove-form .ingredient-remove { min-width: 42px; width: 42px; height: 36px; font-size: 1.55rem; }
 .ingredient-category { color: #8a786b; font-size: 1.35rem; line-height: 1.15; margin-top: 0.1rem; }
 .expiry-form { display: grid; gap: 0.35rem; min-width: 240px; max-width: 420px; }
 .expiry-form .form-control { font-size: 1.15rem; padding: 0.52rem 0.6rem; background: #fff; }
