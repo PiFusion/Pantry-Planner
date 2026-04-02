@@ -116,6 +116,37 @@ http://127.0.0.1:5000/ingredients
 
 ---
 
+# Testing (Current Project)
+
+## Run full test suite
+
+PYTHONPATH=. pytest -q
+
+## One-command setup + test scripts
+
+macOS/Linux:
+
+bash scripts/run_everything.sh
+
+Windows PowerShell:
+
+powershell -ExecutionPolicy Bypass -File .\scripts\run_everything.ps1
+
+To also start the app after setup + tests, append `--serve`:
+
+- `bash scripts/run_everything.sh --serve`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\run_everything.ps1 --serve`
+
+These scripts will:
+- create `.venv` if needed
+- install dependencies
+- initialize DB
+- sync ingredients
+- run tests
+- optionally start Flask dev server
+
+---
+
 # Admin Setup
 
 By default, newly registered users are created with the role **user**.
@@ -287,7 +318,7 @@ Recommended environment:
 
 ---
 
-# DevOps Talking Points 
+# DevOps Talking Points (Interview / Demo Friendly)
 
 If someone asks about DevOps for Pantry Planner, you can describe it in four layers:
 
