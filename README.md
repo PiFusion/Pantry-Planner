@@ -263,6 +263,27 @@ Completed tasks:
 
 ---
 
+## Sprint 6
+
+Goal: Improve GitHub documentation
+
+Completed Tasks:
+- improved documentation
+- started Pytest for testing the database
+- bookmark functionality
+- meal planner functioning
+
+---
+
+## Sprint 7
+
+Goal: Finish pytest, research devops
+
+Completed Tasks:
+- finished pytest functionality
+- research on devops
+  
+---
 # Coding Standards
 
 The project follows the **PEP8 Python style guide**.
