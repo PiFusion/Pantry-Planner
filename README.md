@@ -263,6 +263,27 @@ Completed tasks:
 
 ---
 
+## Sprint 6
+
+Goal: Improve GitHub documentation
+
+Completed Tasks:
+- improved documentation
+- started Pytest for testing the database
+- bookmark functionality
+- meal planner functioning
+
+---
+
+## Sprint 7
+
+Goal: Finish pytest, research devops
+
+Completed Tasks:
+- finished pytest functionality
+- research on devops
+  
+---
 # Coding Standards
 
 The project follows the **PEP8 Python style guide**.
@@ -341,10 +362,6 @@ If someone asks about DevOps for Pantry Planner, you can describe it in four lay
 - Database initialization/migrations should run as part of deployment.
 - Basic observability should include: request logs, error tracking, and uptime checks.
 - Backups and restore testing are essential once production data exists.
-
-## Example one-minute DevOps answer
-
-“For DevOps, Pantry Planner uses GitHub-based collaboration with PR reviews and CI test checks to protect main. We develop locally in Flask, and the production path is containerized Flask/Gunicorn with environment variables and a managed Postgres database. Deployments run database migrations, and we monitor logs, uptime, and backups so the app is reliable and recoverable.”
 
 The application currently runs locally using the Flask development server.
 
@@ -479,11 +496,15 @@ Testing was performed using **PyTest and unittest**.
 - route testing for Flask endpoints
 - authentication tests
 - database interaction tests
-
+- 
 ## Running Tests
+Detailed test:
 
 python -m unittest discover -s tests -v
 
+Quick test:
+
+python -m pytest tests/test_app.py
 
 ---
 
@@ -524,11 +545,7 @@ A task is complete when:
 - pull request is reviewed and merged
 
 ---
-# Running Tests
 
-python -m unittest discover -s tests -v
-
----
 
 # Team Members
 

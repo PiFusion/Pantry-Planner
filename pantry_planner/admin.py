@@ -46,6 +46,7 @@ def panel():
     selected_ingredients = []
     ingredient_q = request.args.get("ingredient_q", "").strip()
     candidate_ingredients = []
+    candidate_ingredient_names = []
 
     if manage_user_id:
         manage_user = db.execute(
@@ -79,6 +80,7 @@ def panel():
                 """,
                 (manage_user_id, ingredient_q, f"%{ingredient_q}%"),
             ).fetchall()
+            candidate_ingredient_names = [row["name"] for row in candidate_ingredients]
 
     ingredient_admin_q = request.args.get("ingredient_admin_q", "").strip()
     ingredient_page = request.args.get("ingredient_page", default=1, type=int) or 1
@@ -152,6 +154,7 @@ def panel():
         selected_ingredients=selected_ingredients,
         ingredient_q=ingredient_q,
         candidate_ingredients=candidate_ingredients,
+        candidate_ingredient_names=candidate_ingredient_names,
         ingredient_admin_q=ingredient_admin_q,
         ingredient_rows=ingredient_rows,
         ingredient_page=ingredient_page,
