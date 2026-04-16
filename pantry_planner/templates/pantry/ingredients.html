@@ -48,7 +48,7 @@
     <aside class="panel-card selected-panel-card">
       <div class="panel-title panel-title-split selected-panel-head">
         <div>
-          <span>Selected Ingredients</span>
+          <span>Expiration Date:</span>
           <p class="selected-panel-subtitle">Track what you already have</p>
         </div>
         <span class="count selected-count-pill" id="selectedCountHeader">{{ selected_count }}</span>
@@ -71,6 +71,12 @@
                   <p class="ingredient-category">{{ ing.category }}</p>
                 </div>
               </div>
+
+              <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form selected-remove-form">
+                <input type="hidden" name="ingredient_id" value="{{ ing.id }}">
+                <input type="hidden" name="return_q" value="{{ q }}">
+                <button type="submit" class="ingredient-action ingredient-remove" aria-label="Remove {{ ing.name }}">−</button>
+              </form>
 
               {% if g.user %}
                 <form method="post" action="/ingredients/expiry/{{ ing.id }}" class="expiry-form" data-auto-submit="true">
@@ -200,6 +206,11 @@ function selectedRowMarkup(id, name) {
           <p class="ingredient-category">Pantry</p>
         </div>
       </div>
+      <form method="post" action="/ingredients/toggle" class="ingredient-toggle-form selected-remove-form">
+        <input type="hidden" name="ingredient_id" value="${id}">
+        <input type="hidden" name="return_q" value="${returnQ}">
+        <button type="submit" class="ingredient-action ingredient-remove" aria-label="Remove ${name}">−</button>
+      </form>
       <form method="post" action="/ingredients/expiry/${id}" class="expiry-form" data-auto-submit="true">
         <input type="hidden" name="return_q" value="${returnQ}">
         <input type="date" name="expires_on" class="form-control expiry-input" value="">

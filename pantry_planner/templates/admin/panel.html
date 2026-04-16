@@ -47,10 +47,13 @@
 
       <section class="admin-card" id="users">
         <div class="admin-card-head split">
-          <h3>User Management</h3>
+          <div>
+            <h3>User Management</h3>
+            <p class="muted">{{ users|length }} users shown</p>
+          </div>
           <div class="user-tools">
             <form method="get" action="/admin/" class="admin-search-row">
-              <input class="form-control" name="user_q" value="{{ user_q }}" placeholder="Search users">
+              <input class="form-control" name="user_q" value="{{ user_q }}" placeholder="Search users" list="userSearchOptions" autocomplete="off">
               <button type="submit" class="btn btn-ghost btn-sm">Search</button>
             </form>
             <button type="button" class="btn btn-primary" disabled title="Create user flow is not enabled yet">+ Create User</button>
@@ -75,17 +78,14 @@
                     <td><span class="role-badge {{ 'admin' if u.role == 'admin' else 'user' }}">{{ u.role|title }}</span></td>
                     <td><span class="status-active">Active</span></td>
                     <td>
-                      <details class="actions-menu">
-                        <summary>⋯</summary>
-                        <div class="actions-dropdown">
-                          <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
-                          <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this);" data-username="{{ u.username }}" data-role="{{ u.role }}">
-                            <input type="hidden" name="confirm_delete" value="yes">
-                            <input type="hidden" name="admin_confirm_username" value="">
-                            <button type="submit" class="danger-link">Delete user</button>
-                          </form>
-                        </div>
-                      </details>
+                      <div class="user-actions-inline">
+                        <a class="btn btn-ghost btn-sm" href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}#manage-pantry">Manage</a>
+                        <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this);" data-username="{{ u.username }}" data-role="{{ u.role }}">
+                          <input type="hidden" name="confirm_delete" value="yes">
+                          <input type="hidden" name="admin_confirm_username" value="">
+                          <button type="submit" class="btn btn-ghost btn-sm danger-link">Delete</button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 {% endfor %}
@@ -104,7 +104,7 @@
             <form method="get" action="/admin/" class="admin-search-row compact">
               <input type="hidden" name="manage_user_id" value="{{ manage_user.id }}">
               <input type="hidden" name="user_q" value="{{ user_q }}">
-              <input class="form-control" name="ingredient_q" value="{{ ingredient_q }}" placeholder="Search ingredients to add">
+              <input class="form-control" name="ingredient_q" value="{{ ingredient_q }}" placeholder="Search ingredients to add" list="candidateIngredientOptions" autocomplete="off">
               <button type="submit" class="btn btn-ghost btn-sm">Search</button>
             </form>
           </div>
@@ -127,7 +127,7 @@
             <div>
               <h4>Add ingredient</h4>
               <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/add" class="admin-search-row compact">
-                <select name="ingredient_id" class="form-control">
+                <select name="ingredient_id" class="form-control" size="10">
                   <option value="">Select ingredient</option>
                   {% for ing in candidate_ingredients %}
                     <option value="{{ ing.id }}">{{ ing.name }}</option>
@@ -145,7 +145,8 @@
           <div class="admin-card-head split">
             <h3>Ingredient Moderation</h3>
             <form method="get" action="/admin/" class="admin-search-row compact">
-              <input class="form-control" name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients">
+              <input type="hidden" name="ingredient_page" value="1">
+              <input class="form-control" name="ingredient_admin_q" value="{{ ingredient_admin_q }}" placeholder="Search ingredients" list="allIngredientOptions" autocomplete="off">
               <button type="submit" class="btn btn-ghost btn-sm">Search</button>
             </form>
           </div>
@@ -166,6 +167,25 @@
               <li class="muted">No ingredients found.</li>
             {% endfor %}
           </ul>
+          <div class="pagination-row">
+            {% if ingredient_page > 1 %}
+              <a
+                class="btn btn-ghost btn-sm"
+                href="/admin/?ingredient_admin_q={{ ingredient_admin_q|urlencode }}&ingredient_page={{ ingredient_page - 1 }}{% if user_q %}&user_q={{ user_q|urlencode }}{% endif %}{% if manage_user %}&manage_user_id={{ manage_user.id }}{% endif %}{% if ingredient_q %}&ingredient_q={{ ingredient_q|urlencode }}{% endif %}"
+              >← Prev</a>
+            {% else %}
+              <span class="btn btn-ghost btn-sm disabled">← Prev</span>
+            {% endif %}
+            <span class="muted">Page {{ ingredient_page }} of {{ ingredient_total_pages }}</span>
+            {% if ingredient_page < ingredient_total_pages %}
+              <a
+                class="btn btn-ghost btn-sm"
+                href="/admin/?ingredient_admin_q={{ ingredient_admin_q|urlencode }}&ingredient_page={{ ingredient_page + 1 }}{% if user_q %}&user_q={{ user_q|urlencode }}{% endif %}{% if manage_user %}&manage_user_id={{ manage_user.id }}{% endif %}{% if ingredient_q %}&ingredient_q={{ ingredient_q|urlencode }}{% endif %}"
+              >Next →</a>
+            {% else %}
+              <span class="btn btn-ghost btn-sm disabled">Next →</span>
+            {% endif %}
+          </div>
         </section>
 
         <section class="admin-card" id="mealdb-sync-log">
@@ -193,6 +213,22 @@
     </main>
   </div>
 </div>
+
+<datalist id="allIngredientOptions">
+  {% for ingredient_name in ingredient_search_names %}
+    <option value="{{ ingredient_name }}"></option>
+  {% endfor %}
+</datalist>
+<datalist id="candidateIngredientOptions">
+  {% for ingredient_name in candidate_ingredient_names %}
+    <option value="{{ ingredient_name }}"></option>
+  {% endfor %}
+</datalist>
+<datalist id="userSearchOptions">
+  {% for username in user_search_names %}
+    <option value="{{ username }}"></option>
+  {% endfor %}
+</datalist>
 
 <script>
 function confirmDeleteUser(form) {
