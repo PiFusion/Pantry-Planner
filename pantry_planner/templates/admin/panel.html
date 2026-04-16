@@ -99,18 +99,13 @@
 
       {% if manage_user %}
         <section class="admin-card" id="manage-pantry">
-          <div class="admin-card-head split">
+          <div class="admin-card-head">
             <h3>Manage Pantry: {{ manage_user.username }}</h3>
-            <form method="get" action="/admin/" class="admin-search-row compact">
-              <input type="hidden" name="manage_user_id" value="{{ manage_user.id }}">
-              <input type="hidden" name="user_q" value="{{ user_q }}">
-              <input class="form-control" name="ingredient_q" value="{{ ingredient_q }}" placeholder="Search ingredients to add" list="candidateIngredientOptions" autocomplete="off">
-              <button type="submit" class="btn btn-ghost btn-sm">Search</button>
-            </form>
           </div>
           <div class="manage-pantry-grid">
             <div>
               <h4>Current ingredients</h4>
+              <p class="muted">{{ selected_ingredients|length }} ingredients</p>
               <ul class="simple-list">
                 {% for ing in selected_ingredients %}
                   <li>
@@ -126,8 +121,16 @@
             </div>
             <div>
               <h4>Add ingredient</h4>
+              <div class="admin-search-row compact" style="margin-bottom: 0.6rem;">
+                <input
+                  id="managePantryIngredientFilter"
+                  class="form-control"
+                  placeholder="Search ingredients..."
+                  autocomplete="off"
+                >
+              </div>
               <form method="post" action="/admin/users/{{ manage_user.id }}/ingredients/add" class="admin-search-row compact">
-                <select name="ingredient_id" class="form-control" size="10">
+                <select name="ingredient_id" id="managePantryIngredientSelect" class="form-control" size="12">
                   <option value="">Select ingredient</option>
                   {% for ing in candidate_ingredients %}
                     <option value="{{ ing.id }}">{{ ing.name }}</option>
@@ -135,6 +138,7 @@
                 </select>
                 <button type="submit" class="btn btn-primary btn-sm">Add</button>
               </form>
+              <p class="muted" style="margin-top: 0.45rem;">Begin typing to narrow the list.</p>
             </div>
           </div>
         </section>
@@ -216,11 +220,6 @@
 
 <datalist id="allIngredientOptions">
   {% for ingredient_name in ingredient_search_names %}
-    <option value="{{ ingredient_name }}"></option>
-  {% endfor %}
-</datalist>
-<datalist id="candidateIngredientOptions">
-  {% for ingredient_name in candidate_ingredient_names %}
     <option value="{{ ingredient_name }}"></option>
   {% endfor %}
 </datalist>
@@ -312,5 +311,33 @@ window.addEventListener('load', () => {
     updateActiveByScroll();
   }
 });
+
+const manageFilterInput = document.getElementById('managePantryIngredientFilter');
+const manageIngredientSelect = document.getElementById('managePantryIngredientSelect');
+
+if (manageFilterInput && manageIngredientSelect) {
+  const baseOptions = Array.from(manageIngredientSelect.options).map((opt) => ({
+    value: opt.value,
+    text: opt.textContent || '',
+  }));
+
+  function applyManageIngredientFilter() {
+    const q = manageFilterInput.value.trim().toLowerCase();
+    const filtered = baseOptions.filter((opt, idx) => {
+      if (idx === 0) return true;
+      return opt.text.toLowerCase().includes(q);
+    });
+
+    manageIngredientSelect.innerHTML = '';
+    filtered.forEach((opt) => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.text;
+      manageIngredientSelect.appendChild(option);
+    });
+  }
+
+  manageFilterInput.addEventListener('input', applyManageIngredientFilter);
+}
 </script>
 {% endblock %}
