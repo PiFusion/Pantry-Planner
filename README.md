@@ -46,6 +46,33 @@ The application integrates with **TheMealDB API** to retrieve recipe information
 
 ---
 
+# DevOps Workflow
+
+## Branching and Pull Requests
+
+- Create feature branches from `main` using `feature/<short-description>`.
+- Open a pull request early and keep it up to date with your branch.
+- If a PR was updated outside Codex and cannot be updated in-place, create a **new PR** from the latest branch state.
+
+## GitHub Project Board
+
+We use the GitHub Project board to track delivery status across the sprint.
+
+- **Backlog**: work not started
+- **Ready**: work scoped and ready to pick up
+- **In progress**: actively being developed
+- **In review**: awaiting or undergoing review
+- **Done**: completed and merged
+
+When opening or updating a PR:
+
+- link the related issue/task card
+- move the card to **In progress** when coding starts
+- move it to **In review** when PR is ready
+- move it to **Done** after merge
+
+---
+
 # Quickstart
 
 ## 1. Clone the Repository
@@ -85,6 +112,33 @@ flask --app pantry_planner run --debug
 Open in browser:
 
 http://127.0.0.1:5000/ingredients
+
+---
+
+# Deployment Notes (Render/AWS/App hosts)
+
+If you see an **Internal Server Error (500)** on hosted environments but not locally, the most common cause is an uninitialized database.
+
+Required setup commands:
+
+flask --app pantry_planner init-db
+flask --app pantry_planner sync-ingredients
+
+For platforms that do not support pre-deploy jobs on free tiers, include initialization in the start command:
+
+flask --app pantry_planner init-db && flask --app pantry_planner sync-ingredients && flask --app pantry_planner run --host 0.0.0.0 --port $PORT
+
+---
+
+# Running Tests
+
+From the repository root:
+
+PYTHONPATH=. pytest -q
+
+If your CI currently runs `unittest`, use:
+
+python -m unittest discover -s tests -p "test_*.py"
 
 
 ---

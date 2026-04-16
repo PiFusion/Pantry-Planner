@@ -74,24 +74,63 @@ def panel():
                  AND p.user_id = ?
                 WHERE p.id IS NULL
                   AND i.hidden = 0
-                  AND i.name LIKE ?
+                  AND (? = '' OR i.name LIKE ?)
                 ORDER BY i.name
-                LIMIT 50
                 """,
-                (manage_user_id, f"%{ingredient_q}%"),
+                (manage_user_id, ingredient_q, f"%{ingredient_q}%"),
             ).fetchall()
 
     ingredient_admin_q = request.args.get("ingredient_admin_q", "").strip()
+    ingredient_page = request.args.get("ingredient_page", default=1, type=int) or 1
+    ingredient_page = max(1, ingredient_page)
+    ingredients_per_page = 100
+    ingredient_offset = (ingredient_page - 1) * ingredients_per_page
+
+    ingredient_total_row = db.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM ingredients
+        WHERE name LIKE ?
+        """,
+        (f"%{ingredient_admin_q}%",),
+    ).fetchone()
+    ingredient_total = ingredient_total_row["c"] if ingredient_total_row else 0
+    ingredient_total_pages = max(1, (ingredient_total + ingredients_per_page - 1) // ingredients_per_page)
+    if ingredient_page > ingredient_total_pages:
+        ingredient_page = ingredient_total_pages
+        ingredient_offset = (ingredient_page - 1) * ingredients_per_page
+
     ingredient_rows = db.execute(
         """
         SELECT id, name, hidden, updated_at
         FROM ingredients
         WHERE name LIKE ?
         ORDER BY name
-        LIMIT 100
+        LIMIT ? OFFSET ?
         """,
-        (f"%{ingredient_admin_q}%",),
+        (f"%{ingredient_admin_q}%", ingredients_per_page, ingredient_offset),
     ).fetchall()
+
+    ingredient_search_names = [
+        row["name"]
+        for row in db.execute(
+            """
+            SELECT name
+            FROM ingredients
+            ORDER BY name
+            """
+        ).fetchall()
+    ]
+    user_search_names = [
+        row["username"]
+        for row in db.execute(
+            """
+            SELECT username
+            FROM users
+            ORDER BY username
+            """
+        ).fetchall()
+    ]
 
     blacklisted_ingredients = db.execute(
         """
@@ -115,7 +154,11 @@ def panel():
         candidate_ingredients=candidate_ingredients,
         ingredient_admin_q=ingredient_admin_q,
         ingredient_rows=ingredient_rows,
+        ingredient_page=ingredient_page,
+        ingredient_total_pages=ingredient_total_pages,
         blacklisted_ingredients=blacklisted_ingredients,
+        ingredient_search_names=ingredient_search_names,
+        user_search_names=user_search_names,
     )
 
 
