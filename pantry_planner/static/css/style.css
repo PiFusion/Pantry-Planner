@@ -318,6 +318,8 @@ button { cursor: pointer; }
 .admin-moderation-grid { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; }
 .moderation-list { list-style: none; display: grid; gap: 0.45rem; }
 .moderation-list li { border: 1px solid var(--border); border-radius: 10px; padding: 0.45rem 0.6rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pagination-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.75rem; }
+.btn.disabled { pointer-events: none; opacity: 0.55; }
 
 .switch { position: relative; display: inline-block; width: 42px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
@@ -430,6 +432,8 @@ button { cursor: pointer; }
 .selected-ingredient-row { display: grid; grid-template-columns: 1fr; align-items: start; gap: 0.55rem; border-bottom: 1px solid var(--border); padding-block: 0.95rem; }
 .selected-ingredient-row .ingredient-main { align-items: flex-start; }
 .selected-ingredient-row .ingredient-main > div { min-width: 0; }
+.selected-remove-form { justify-self: end; }
+.selected-remove-form .ingredient-remove { min-width: 42px; width: 42px; height: 36px; font-size: 1.55rem; }
 .ingredient-category { color: #8a786b; font-size: 1.35rem; line-height: 1.15; margin-top: 0.1rem; }
 .expiry-form { display: grid; gap: 0.35rem; min-width: 240px; max-width: 420px; }
 .expiry-form .form-control { font-size: 1.15rem; padding: 0.52rem 0.6rem; background: #fff; }
