@@ -47,7 +47,10 @@
 
       <section class="admin-card" id="users">
         <div class="admin-card-head split">
-          <h3>User Management</h3>
+          <div>
+            <h3>User Management</h3>
+            <p class="muted">{{ users|length }} users shown</p>
+          </div>
           <div class="user-tools">
             <form method="get" action="/admin/" class="admin-search-row">
               <input class="form-control" name="user_q" value="{{ user_q }}" placeholder="Search users" list="userSearchOptions" autocomplete="off">
@@ -75,17 +78,14 @@
                     <td><span class="role-badge {{ 'admin' if u.role == 'admin' else 'user' }}">{{ u.role|title }}</span></td>
                     <td><span class="status-active">Active</span></td>
                     <td>
-                      <details class="actions-menu">
-                        <summary>⋯</summary>
-                        <div class="actions-dropdown">
-                          <a href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}">Manage pantry</a>
-                          <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this);" data-username="{{ u.username }}" data-role="{{ u.role }}">
-                            <input type="hidden" name="confirm_delete" value="yes">
-                            <input type="hidden" name="admin_confirm_username" value="">
-                            <button type="submit" class="danger-link">Delete user</button>
-                          </form>
-                        </div>
-                      </details>
+                      <div class="user-actions-inline">
+                        <a class="btn btn-ghost btn-sm" href="/admin/?user_q={{ user_q }}&manage_user_id={{ u.id }}#manage-pantry">Manage</a>
+                        <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirmDeleteUser(this);" data-username="{{ u.username }}" data-role="{{ u.role }}">
+                          <input type="hidden" name="confirm_delete" value="yes">
+                          <input type="hidden" name="admin_confirm_username" value="">
+                          <button type="submit" class="btn btn-ghost btn-sm danger-link">Delete</button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 {% endfor %}

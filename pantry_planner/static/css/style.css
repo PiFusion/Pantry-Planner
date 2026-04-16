@@ -302,10 +302,13 @@ button { cursor: pointer; }
 .admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
 .admin-table th, .admin-table td { text-align: left; border-bottom: 1px solid var(--border); padding: 0.65rem 0.8rem; }
 .admin-table th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; }
+.user-actions-inline { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.user-actions-inline form { margin: 0; }
 .role-badge { border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.8rem; font-weight: 600; }
 .role-badge.admin { background: var(--accent-soft); color: var(--accent-dark); }
 .role-badge.user { background: #f1ece6; color: #5f5348; }
 .status-active { color: #5f8f3b; font-weight: 600; }
+.btn.danger-link { color: var(--danger); }
 
 .actions-menu { position: relative; }
 .actions-menu summary { list-style: none; border: 1px solid var(--border); border-radius: 8px; width: 38px; height: 32px; display: grid; place-items: center; cursor: pointer; }
