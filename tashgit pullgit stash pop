@@ -1,0 +1,17 @@
+[33m8d7511d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #55 from PiFusion/codex/create-powerpoint-presentation-for-pantry-planner-a3unn6
+[33m7fcd164[m[33m ([m[1;31morigin/codex/create-powerpoint-presentation-for-pantry-planner-a3unn6[m[33m)[m Add script and docs to generate presentation PPTX from markdown
+[33mc66b82a[m Merge pull request #54 from PiFusion/create-powerpoint-presentation-for-pantry-planner
+[33m8ff4117[m[33m ([m[1;31morigin/codex/create-powerpoint-presentation-for-pantry-planner[m[33m)[m Add comprehensive final presentation deck outline for Pantry Planner
+[33m833c1fd[m Revert "Update style.css"
+[33m0934543[m Merge pull request #53 from PiFusion/add-github-project-board-to-readme-ekf3xe
+[33m4f29a9f[m[33m ([m[1;31morigin/codex/add-github-project-board-to-readme-ekf3xe[m[33m)[m Merge branch 'main' into codex/add-github-project-board-to-readme-ekf3xe
+[33m5b459f4[m refactor(admin): switch add-ingredient to live filter list
+[33m3907b4d[m Merge pull request #52 from PiFusion/add-github-project-board-to-readme-ode0an
+[33m3013a02[m[33m ([m[1;31morigin/codex/add-github-project-board-to-readme-ode0an[m[33m)[m refactor(admin): replace row menus with visible manage/delete actions
+[33m709698c[m Merge branch 'main' of https://github.com/PiFusion/Pantry-Planner
+[33me8316f4[m Update style.css
+[33m77a79dd[m Merge pull request #51 from PiFusion/add-github-project-board-to-readme
+[33mb161994[m[33m ([m[1;31morigin/codex/add-github-project-board-to-readme[m[33m)[m feat(admin): paginate moderation list and add search autocomplete
+[33m641b8e8[m updated readme
+[33m2e1e6f3[m Merge pull request #50 from PiFusion/codex/add-github-project-board-to-readme-9qdg8w
+[33mb803fc2[m[33m ([m[1;31morigin/add-github-project-board-to-readme[m[33m)[m feat: add per-item remove button in selected pantry list

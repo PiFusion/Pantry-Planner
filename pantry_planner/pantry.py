@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, g, jsonify
+from sentry_sdk import add_breadcrumb
 from .db import get_db
 
 bp = Blueprint("pantry", __name__)
@@ -15,8 +16,6 @@ def _get_selected_ids():
 
 def _set_selected_ids(id_set):
     session["selected_ingredient_ids"] = sorted(list(id_set))
-
-
 
 
 def _ingredient_category(name: str) -> str:
@@ -71,6 +70,11 @@ def _selected_ingredients_for_current_user():
     db = get_db()
 
     if g.user:
+        add_breadcrumb(
+            category="pantry",
+            message=f"Loading pantry items from DB for user_id: {g.user['id']}",
+            level="info"
+        )
         rows = db.execute(
             """
             SELECT i.id, i.name, p.expires_on
@@ -81,6 +85,11 @@ def _selected_ingredients_for_current_user():
             """,
             (g.user["id"],),
         ).fetchall()
+        add_breadcrumb(
+            category="pantry",
+            message=f"Loaded {len(rows)} pantry items for user_id: {g.user['id']}",
+            level="info"
+        )
         selected_ingredients = [
             {
                 "id": r["id"],
@@ -94,10 +103,21 @@ def _selected_ingredients_for_current_user():
         selected_ids = {r["id"] for r in rows}
         return selected_ingredients, selected_ids
 
+    # Guest user — fall back to session
     selected_ids = _get_selected_ids()
     if not selected_ids:
+        add_breadcrumb(
+            category="pantry",
+            message="Guest user has no selected ingredients in session",
+            level="info"
+        )
         return [], set()
 
+    add_breadcrumb(
+        category="pantry",
+        message=f"Loading {len(selected_ids)} ingredient(s) from session for guest user",
+        level="info"
+    )
     placeholders = ",".join(["?"] * len(selected_ids))
     rows = db.execute(
         f"""
@@ -123,7 +143,17 @@ def _selected_ingredients_for_current_user():
 @bp.get("/ingredients")
 def ingredients():
     q = request.args.get("q", "").strip().lower()
+    add_breadcrumb(
+        category="pantry",
+        message=f"Rendering ingredients page, search query: '{q}'" if q else "Rendering ingredients page, no search query",
+        level="info"
+    )
     filtered_ingredients = _load_filtered_ingredients(q)
+    add_breadcrumb(
+        category="pantry",
+        message=f"Filtered ingredients list has {len(filtered_ingredients)} results",
+        level="info"
+    )
     selected_ingredients, selected_ids = _selected_ingredients_for_current_user()
 
     return render_template(
@@ -147,6 +177,13 @@ def _toggle_by_id(ingredient_id: int):
     ).fetchone()
     ingredient_name = ingredient["name"] if ingredient else "ingredient"
 
+    if not ingredient:
+        add_breadcrumb(
+            category="pantry",
+            message=f"Toggle called for unknown ingredient_id: {ingredient_id}",
+            level="warning"
+        )
+
     action = "added"
     if g.user:
         exists = db.execute(
@@ -160,10 +197,20 @@ def _toggle_by_id(ingredient_id: int):
                 (g.user["id"], ingredient_id),
             )
             action = "removed"
+            add_breadcrumb(
+                category="pantry",
+                message=f"Removed '{ingredient_name}' (id={ingredient_id}) from pantry for user_id: {g.user['id']}",
+                level="info"
+            )
         else:
             db.execute(
                 "INSERT INTO pantry_items (user_id, ingredient_id, added_on) VALUES (?, ?, date('now'))",
                 (g.user["id"], ingredient_id),
+            )
+            add_breadcrumb(
+                category="pantry",
+                message=f"Added '{ingredient_name}' (id={ingredient_id}) to pantry for user_id: {g.user['id']}",
+                level="info"
             )
         db.commit()
     else:
@@ -171,8 +218,18 @@ def _toggle_by_id(ingredient_id: int):
         if ingredient_id in selected:
             selected.remove(ingredient_id)
             action = "removed"
+            add_breadcrumb(
+                category="pantry",
+                message=f"Guest removed '{ingredient_name}' (id={ingredient_id}) from session",
+                level="info"
+            )
         else:
             selected.add(ingredient_id)
+            add_breadcrumb(
+                category="pantry",
+                message=f"Guest added '{ingredient_name}' (id={ingredient_id}) to session",
+                level="info"
+            )
         _set_selected_ids(selected)
 
     return action, ingredient_name
@@ -183,6 +240,11 @@ def toggle_ingredient():
     ingredient_id = int(request.form["ingredient_id"])
     return_q = request.form.get("return_q", "")
 
+    add_breadcrumb(
+        category="pantry",
+        message=f"Toggle (sync) requested for ingredient_id: {ingredient_id}",
+        level="info"
+    )
     action, ingredient_name = _toggle_by_id(ingredient_id)
 
     return redirect(url_for(
@@ -198,9 +260,19 @@ def toggle_ingredient():
 def toggle_ingredient_async():
     ingredient_id = int(request.form["ingredient_id"])
 
+    add_breadcrumb(
+        category="pantry",
+        message=f"Toggle (async) requested for ingredient_id: {ingredient_id}",
+        level="info"
+    )
     action, ingredient_name = _toggle_by_id(ingredient_id)
     selected_count = len(_selected_ingredients_for_current_user()[1])
 
+    add_breadcrumb(
+        category="pantry",
+        message=f"Async toggle complete — action: {action}, selected_count: {selected_count}",
+        level="info"
+    )
     return jsonify({
         "ok": True,
         "action": action,
@@ -216,9 +288,24 @@ def clear_ingredients():
     db = get_db()
 
     if g.user:
+        add_breadcrumb(
+            category="pantry",
+            message=f"Clearing all pantry items for user_id: {g.user['id']}",
+            level="info"
+        )
         db.execute("DELETE FROM pantry_items WHERE user_id = ?", (g.user["id"],))
         db.commit()
+        add_breadcrumb(
+            category="pantry",
+            message=f"Pantry cleared for user_id: {g.user['id']}",
+            level="info"
+        )
     else:
+        add_breadcrumb(
+            category="pantry",
+            message="Clearing guest session ingredient selections",
+            level="info"
+        )
         _set_selected_ids(set())
 
     return redirect(url_for("pantry.ingredients", q=return_q))
@@ -229,9 +316,24 @@ def clear_ingredients_async():
     db = get_db()
 
     if g.user:
+        add_breadcrumb(
+            category="pantry",
+            message=f"Clearing all pantry items (async) for user_id: {g.user['id']}",
+            level="info"
+        )
         db.execute("DELETE FROM pantry_items WHERE user_id = ?", (g.user["id"],))
         db.commit()
+        add_breadcrumb(
+            category="pantry",
+            message=f"Pantry cleared (async) for user_id: {g.user['id']}",
+            level="info"
+        )
     else:
+        add_breadcrumb(
+            category="pantry",
+            message="Clearing guest session ingredient selections (async)",
+            level="info"
+        )
         _set_selected_ids(set())
 
     return jsonify({"ok": True, "selected_count": 0})
@@ -240,11 +342,22 @@ def clear_ingredients_async():
 @bp.post("/ingredients/expiry/<int:ingredient_id>")
 def update_expiry(ingredient_id):
     if g.user is None:
+        add_breadcrumb(
+            category="pantry",
+            message=f"Unauthenticated expiry update attempt for ingredient_id: {ingredient_id}",
+            level="warning"
+        )
         return redirect(url_for("auth.login"))
 
     expires_on = (request.form.get("expires_on") or "").strip()
     if not expires_on:
         expires_on = None
+
+    add_breadcrumb(
+        category="pantry",
+        message=f"Updating expiry for ingredient_id: {ingredient_id}, user_id: {g.user['id']}, expires_on: {expires_on}",
+        level="info"
+    )
 
     db = get_db()
     db.execute(
@@ -257,4 +370,9 @@ def update_expiry(ingredient_id):
     )
     db.commit()
 
+    add_breadcrumb(
+        category="pantry",
+        message=f"Expiry updated successfully for ingredient_id: {ingredient_id}, user_id: {g.user['id']}",
+        level="info"
+    )
     return redirect(url_for("pantry.ingredients", q=request.form.get("return_q", "")))

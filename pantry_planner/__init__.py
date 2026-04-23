@@ -1,12 +1,32 @@
 from flask import Flask, render_template
 import os
-
+import logging
+from sentry_sdk import add_breadcrumb
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from dotenv import load_dotenv
+from sentry_sdk.integrations.logging import LoggingIntegration
 from .db import close_db, init_db, get_db
 from .integrations.mealdb import fetch_ingredients
+
+# Load env vars
+load_dotenv()
 
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
+
+    sentry_logging = LoggingIntegration(
+        level="INFO",        # logs become breadcrumbs
+        event_level="ERROR"  # errors become events
+    )
+
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        integrations=[FlaskIntegration(), sentry_logging],
+        traces_sample_rate=1.0,
+    )
+    print("SENTRY DSN:", os.getenv("SENTRY_DSN"))
 
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
@@ -17,21 +37,30 @@ def create_app():
 
     app.teardown_appcontext(close_db)
 
+    # CLI: init db
     @app.cli.command("init-db")
     def init_db_command():
         init_db()
         print("✅ Database initialized.")
 
+    # CLI: sync ingredients
     @app.cli.command("sync-ingredients")
     def sync_ingredients_command():
-        """Fetch ingredient list from MealDB and store in local DB."""
         db = get_db()
+
+        add_breadcrumb(
+            category="sync",
+            message="Fetching ingredients from MealDB",
+            level="info"
+        )
         items = fetch_ingredients()
 
+        add_breadcrumb(
+            category="sync",
+            message=f"Fetched {len(items)} ingredients, beginning DB upsert",
+            level="info"
+        )
         for ing in items:
-            name = ing["name"]
-            mealdb_id = ing.get("mealdb_id")
-
             db.execute(
                 """
                 INSERT INTO ingredients (name, mealdb_id, updated_at)
@@ -40,36 +69,50 @@ def create_app():
                   mealdb_id = excluded.mealdb_id,
                   updated_at = datetime('now')
                 """,
-                (name, mealdb_id),
+                (ing["name"], ing.get("mealdb_id")),
             )
 
         db.commit()
-        print(f"✅ Synced {len(items)} ingredients into SQLite.")
+        print(f"✅ Synced {len(items)} ingredients.")
 
-
+    # CLI: make admin
     @app.cli.command("make-admin")
     def make_admin_command():
-        """Promote a user to admin by username."""
         import click
 
         username = click.prompt("Username to promote").strip()
-        if not username:
-            print("❌ Username is required.")
-            return
+
+        add_breadcrumb(
+            category="admin",
+            message=f"Attempting to promote user to admin: {username}",
+            level="info"
+        )
 
         db = get_db()
-        row = db.execute("SELECT id, role FROM users WHERE username = ?", (username,)).fetchone()
-        if row is None:
-            print(f"❌ User '{username}' not found.")
+        user = db.execute(
+            "SELECT id, role FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+
+        if not user:
+            print("❌ User not found")
             return
 
-        if row["role"] == "admin":
-            print(f"ℹ️ User '{username}' is already an admin.")
+        if user["role"] == "admin":
+            print("ℹ️ Already admin")
             return
 
-        db.execute("UPDATE users SET role = 'admin' WHERE id = ?", (row["id"],))
+        add_breadcrumb(
+            category="admin",
+            message=f"Executing role update for user id: {user['id']}",
+            level="info"
+        )
+        db.execute(
+            "UPDATE users SET role = 'admin' WHERE id = ?",
+            (user["id"],)
+        )
         db.commit()
-        print(f"✅ Promoted '{username}' to admin.")
+        print("✅ Promoted to admin")
 
     # Blueprints
     from .auth import bp as auth_bp
@@ -91,5 +134,17 @@ def create_app():
     @app.get("/")
     def home():
         return render_template("home.html")
+
+    @app.get("/sentry-test")
+    def sentry_test():
+        logging.info("Log before crash")
+
+        add_breadcrumb(
+            category="test",
+            message="Manual breadcrumb before crash",
+            level="info"
+        )
+
+        raise Exception("Sentry is working!")
 
     return app
