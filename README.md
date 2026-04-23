@@ -143,27 +143,6 @@ python -m unittest discover -s tests -p "test_*.py"
 
 ---
 
-# Generate PowerPoint from Final Presentation Markdown
-
-If you want a downloadable `.pptx` based on:
-
-`Project documentation/Final Presentation - Pantry Planner.md`
-
-run:
-
-```bash
-pip install python-pptx
-python scripts/generate_ppt_from_markdown.py \
-  --input "Project documentation/Final Presentation - Pantry Planner.md" \
-  --output "Project documentation/Final Presentation - Pantry Planner.pptx"
-```
-
-This creates:
-
-`Project documentation/Final Presentation - Pantry Planner.pptx`
-
----
-
 # Admin Setup
 
 By default, newly registered users are created with the role **user**.
